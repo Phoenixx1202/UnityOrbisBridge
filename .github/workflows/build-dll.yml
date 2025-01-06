@@ -1,0 +1,64 @@
+name: Build and Deploy UnityOrbisBridge.dll
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Cache Visual Studio Build Tools
+      id: cache-vsbuildtools
+      uses: actions/cache@v3
+      with:
+        path: |
+          C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools
+        key: ${{ runner.os }}-vsbuildtools-16.11.5
+        restore-keys: |
+          ${{ runner.os }}-vsbuildtools-16.11
+
+    - name: Install Visual Studio Build Tools
+      if: steps.cache-vsbuildtools.outputs.cache-hit != 'true'
+      run: |
+        choco install visualstudio2019buildtools --version=16.11.5.0 -y --no-progress
+        Start-Process "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" -ArgumentList "modify", "--quiet", "--wait", "--installPath", "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools", "--add", "Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools", "--add", "Microsoft.VisualStudio.Workload.NetCoreBuildTools" -NoNewWindow -Wait
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Build Solution in Release Configuration
+      run: |
+        msbuild.exe source/Unity-API/UnityOrbisBridge.sln /nologo /nr:false /p:Configuration=Release /p:DeployOnBuild=true /p:DeployDefaultTarget=Build /p:platform="Any CPU" /p:TargetFrameworkVersion="v3.5"
+
+    - name: Check Build Output
+      run: |
+        echo "Checking for DLL in the build folder"
+        dir source/Unity-API/bin/Release
+
+    - name: Copy Built DLL to Source Folder
+      run: |
+        echo "Copying DLL to source/Unity-API"
+        copy source/Unity-API/bin/Release/UnityOrbisBridge.dll source/Unity-API/UnityOrbisBridge.dll
+
+    - name: Upload DLL as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: UnityOrbisBridge-DLL
+        path: source/Unity-API/UnityOrbisBridge.dll
+
+    - name: Configure Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "github-actions@github.com"
+
+    - name: Commit and Push DLL to Repository
+      run: |
+        git add source/Unity-API/UnityOrbisBridge.dll
+        git commit -m "Push UnityOrbisBridge.dll build artifact" || echo "No changes to commit"
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
