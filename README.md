@@ -19,7 +19,7 @@ You have two options to get started with UnityOrbisBridge:
 - Similarly, copy or move the `UnityOrbisBridge.dll` file into the `Plugins` folder.
 
 ### 4. Inlcuding for Usage
-- Now open you Unity projects `.csproj` file.
+- Now open your Unity projects `.csproj`/`.sln` file.
 - Navigate/create a script and then open it.
 - At the top of the file type `using UnityOrbisBridge;`
 
