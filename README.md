@@ -112,7 +112,7 @@ You have two options to get started with UnityOrbisBridge:
 - [store-api by LightningMods](https://github.com/LightningMods/store-api)
 - [itemzflow by LightningMods](https://github.com/LightningMods/itemzflow)
 
-### Special Thanks
+## Special Thanks
 A huge thank you to the following members of the [OOSDK Discord](https://www.discord.com/invite/GQr8ydn) for their support:
 - **[TheMagicalBlob](https://github.com/TheMagicalBlob)**, [LightningMods](https://github.com/LightningMods), [Al-Azif](https://github.com/Al-Azif), Da Puppeh, Kernel Panic, lainofthewired, and others.
 
