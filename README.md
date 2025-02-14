@@ -114,7 +114,8 @@ You have two options to get started with UnityOrbisBridge:
 
 ## Special Thanks
 A huge thank you to the following members of the [OOSDK Discord](https://www.discord.com/invite/GQr8ydn) for their support:
-- **[TheMagicalBlob](https://github.com/TheMagicalBlob)**, [LightningMods](https://github.com/LightningMods), [Al-Azif](https://github.com/Al-Azif), Da Puppeh, Kernel Panic, lainofthewired, and others.
+- **[TheMagicalBlob](https://github.com/TheMagicalBlob)**, [LightningMods](https://github.com/LightningMods), [Al-Azif](https://github.com/Al-Azif), Da Puppeh, Kernel Panic, lainofthewired, and others. <br><br>
+For assistance, please leave an issue and/or join my community [Discord server](https://discord.com/invite/RjG4Whf) and I'll help you out.
 
 ## License
 This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](https://github.com/ItsJokerZz/uob-testing/blob/main/LICENSE) file for details.
