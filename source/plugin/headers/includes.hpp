@@ -7,6 +7,7 @@
 #include <thread>
 #include <cstdarg>
 #include <inttypes.h>
+#include <future>
 
 #include <orbis/CommonDialog.h>
 #include <orbis/ImeDialog.h>

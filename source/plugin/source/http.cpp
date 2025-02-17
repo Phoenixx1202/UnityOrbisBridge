@@ -182,56 +182,55 @@ static size_t DownloadDataCallback(void *ptr, size_t size, size_t count)
     return totalSize;
 }
 
-char *DownloadAsBytes(const char *url, size_t *out_size)
+char *DownloadThread(const char *url, size_t *out_size)
 {
-    CURL *curl;
-    CURLcode result;
-
-    free(dataBuffer);
-    dataBuffer = NULL;
-    bufferSize = 0;
-
-    curl = curl_easy_init();
-
-    if (curl)
+    CURL *curl = curl_easy_init();
+    if (!curl)
     {
-        std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
-
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadDataCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, NULL);
-
-        result = curl_easy_perform(curl);
-
-        if (result != CURLE_OK)
-        {
-            printAndLog(3, "Download failed with error: %s", curl_easy_strerror(result));
-            free(dataBuffer);
-            dataBuffer = NULL;
-            bufferSize = 0;
-            curl_easy_cleanup(curl);
-            httpStatusCode = static_cast<long>(result);
-
-            return NULL;
-        }
-
-        curl_easy_cleanup(curl);
-
-        *out_size = bufferSize;
-
-        return dataBuffer;
+        httpStatusCode = -1;
+        *out_size = 0;
+        return NULL;
     }
 
     free(dataBuffer);
     dataBuffer = NULL;
     bufferSize = 0;
 
-    httpStatusCode = -1; // Set error state
+    std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
 
-    return NULL;
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadDataCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, NULL);
+
+    CURLcode result = curl_easy_perform(curl);
+    if (result != CURLE_OK)
+    {
+        printAndLog(3, "Download failed with error: %s", curl_easy_strerror(result));
+        free(dataBuffer);
+        dataBuffer = NULL;
+        bufferSize = 0;
+        httpStatusCode = static_cast<long>(result);
+        curl_easy_cleanup(curl);
+        return NULL;
+    }
+
+    curl_easy_cleanup(curl);
+    *out_size = bufferSize;
+    return dataBuffer;
+}
+
+char *DownloadAsBytes(const char *url, size_t *out_size)
+{
+    std::future<char *> future = std::async(std::launch::async,
+                                            [url, out_size]()
+                                            {
+                                                return DownloadThread(url, out_size);
+                                            });
+
+    return future.get();
 }
 
 char *GetDownloadInfo(const char *info)
