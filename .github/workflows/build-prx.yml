@@ -58,17 +58,20 @@ jobs:
           echo "Downloading Latest OpenOrbis Toolchain..."
           GITHUB_OWNER="OpenOrbis"
           GITHUB_REPO="OpenOrbis-PS4-Toolchain"
+          WORKFLOW_FILE="toolchain.yml"
           ARTIFACT_NAME="toolchain-llvm-12"
           GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-          LATEST_RUN_URL="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/actions/runs?per_page=1"
+          # Get latest run ID for the specified workflow
+          LATEST_RUN_URL="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/actions/workflows/$WORKFLOW_FILE/runs?per_page=1&status=completed"
           LATEST_RUN_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$LATEST_RUN_URL" | jq -r '.workflow_runs[0].id')
 
           if [ -z "$LATEST_RUN_ID" ]; then
-            echo "No workflow runs found."
+            echo "No workflow runs found for $WORKFLOW_FILE."
             exit 1
           fi
 
+          # Get artifact download URL for the specified artifact
           ARTIFACTS_URL="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/actions/runs/$LATEST_RUN_ID/artifacts"
           ARTIFACT_DOWNLOAD_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$ARTIFACTS_URL" | jq -r --arg ARTIFACT_NAME "$ARTIFACT_NAME" '.artifacts[] | select(.name == $ARTIFACT_NAME) | .archive_download_url')
 
