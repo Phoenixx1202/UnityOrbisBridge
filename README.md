@@ -57,20 +57,14 @@ You have two options to get started with UnityOrbisBridge:
    sudo git clone https://github.com/bucanero/ps4-libjbc.git /opt/ps4-libjbc
    ```
 
-2. Set the OpenOrbis Toolchain environment variable:
-   
-   ```
-   export OO_PS4_TOOLCHAIN="/opt/OpenOrbis/PS4Toolchain"
-   ```
-
-3. Navigate to the `ps4-libjbc` directory and install it:
+2. Navigate to the `ps4-libjbc` directory and install it:
 
    ```
    cd /opt/ps4-libjbc
    sudo make install
    ```
 
-4. Navigate to the `oosdk_libraries` directory and install the required libraries:
+3. Navigate to the `oosdk_libraries` directory and install the required libraries:
 
    ```
    cd /opt/oosdk_libraries/zlib_partial && sudo make install
@@ -78,14 +72,14 @@ You have two options to get started with UnityOrbisBridge:
    cd /opt/oosdk_libraries/curl-7.64.1 && sudo make install
    ```
 
-5. Install LLVM and Clang (version 12) if you haven't already:
+4. Install LLVM and Clang (version 12) if you haven't already:
 
    ```
    sudo apt update
    sudo apt install llvm-12 clang-12
    ```
 
-6. **Install libcurl from source:**
+5. **Install libcurl from source:**
 
    ```
    cd /opt/oosdk_libraries/curl-7.64.1
@@ -97,7 +91,7 @@ You have two options to get started with UnityOrbisBridge:
    cp -R ../include/curl "${OO_PS4_TOOLCHAIN}/include/"
    ```
 
-7. Finally, build the project:
+6. Finally, build the project:
   navigate to wherever you've cloned/download the repo and simply run: `make`
 
 ## Credits
