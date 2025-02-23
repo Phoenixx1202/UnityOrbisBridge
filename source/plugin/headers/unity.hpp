@@ -4,6 +4,7 @@ extern jbc_cred g_Creds, g_RootCreds;
 
 extern "C"
 {
+  void InitializeNativeDialogs();
   bool IsFreeOfSandbox();
   void EnterSandbox();
   void BreakFromSandbox();

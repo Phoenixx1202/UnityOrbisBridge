@@ -2,8 +2,6 @@
 
 extern std::string consoleType;
 
-void InitializeNativeDialogs();
-
 extern "C"
 {
 #pragma region Logging and Notifications

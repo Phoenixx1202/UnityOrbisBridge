@@ -1,7 +1,5 @@
 #include "../headers/includes.hpp"
 
-void InitializeNativeDialogs();
-
 extern "C"
 {
 #pragma region cURL Web Interactions
@@ -46,6 +44,7 @@ extern "C"
 #pragma endregion
 
 #pragma region Application Operations
+    void InitializeNativeDialogs();
     bool IsFreeOfSandbox();
     void EnterSandbox();
     void BreakFromSandbox();
@@ -53,4 +52,5 @@ extern "C"
     void UnmountFromSandbox(const char *mountName);
     void ExitApplication();
 #pragma endregion
+
 }

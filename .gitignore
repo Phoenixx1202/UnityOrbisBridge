@@ -1,6 +1,9 @@
+/.vscode
+
 /source/Unity-API/.vs
 /source/Unity-API/obj
 /source/Unity-API/bin
 
 /source/plugin/.vscode
 /source/plugin/build
+source/plugin/UnityOrbisBridge.prx

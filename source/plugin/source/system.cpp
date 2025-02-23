@@ -2,25 +2,6 @@
 
 std::string consoleType;
 
-static bool nativeDialogInitialized = false;
-
-void InitializeNativeDialogs()
-{
-    if (!nativeDialogInitialized)
-    {
-        nativeDialogInitialized = true;
-
-        printAndLog(1, "Initiating native dialogs...");
-
-        sceSysmoduleLoadModule(ORBIS_SYSMODULE_MESSAGE_DIALOG);
-        sceCommonDialogInitialize();
-        sceMsgDialogInitialize();
-
-        sceKernelLoadStartModule("/system/common/lib/libSceAppInstUtil.sprx", 0, NULL, 0, NULL, NULL);
-        sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, NULL, 0, NULL, NULL);
-    }
-}
-
 #pragma region Logging and Notifications
 void PrintToConsole(const char *message, int type)
 {
@@ -28,7 +9,7 @@ void PrintToConsole(const char *message, int type)
         type = 0;
 
     std::string logMessage = std::string(logPrefixes[type]) + " " + message;
-  sceKernelDebugOutText(0, (logMessage + "\n").c_str());
+    sceKernelDebugOutText(0, (logMessage + "\n").c_str());
 }
 
 void PrintAndLog(const char *message, int type, const char *file)
@@ -205,7 +186,7 @@ const char *GetDiskInfo(const char *infoType)
 
 void WriteFile(const char *content, const char *file)
 {
-    int fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    int fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1)
     {
         PrintToConsole("WriteFile(): Error opening file", 2);
@@ -219,7 +200,7 @@ void WriteFile(const char *content, const char *file)
 
 void AppendFile(const char *content, const char *file)
 {
-    int fd = open(file, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+    int fd = open(file, O_WRONLY | O_APPEND | O_CREAT, 0666);
     if (fd == -1)
     {
         PrintToConsole("AppendFile(): Error opening file", 2);

@@ -2,6 +2,35 @@
 
 jbc_cred g_Creds, g_RootCreds;
 
+static bool nativeDialogInitialized = false;
+
+void InitializeNativeDialogs()
+{
+  if (!nativeDialogInitialized)
+  {
+    nativeDialogInitialized = true;
+
+    bool wasAlreadyFree = false;
+
+    if (IsFreeOfSandbox())
+      wasAlreadyFree = true;
+
+    BreakFromSandbox();
+
+    printAndLog(1, "Initiating native dialogs...");
+
+    sceSysmoduleLoadModule(ORBIS_SYSMODULE_MESSAGE_DIALOG);
+    sceCommonDialogInitialize();
+    sceMsgDialogInitialize();
+
+    sceKernelLoadStartModule("/system/common/lib/libSceAppInstUtil.sprx", 0, NULL, 0, NULL, NULL);
+    sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, NULL, 0, NULL, NULL);
+
+    if (!wasAlreadyFree)
+      EnterSandbox();
+  }
+}
+
 bool IsFreeOfSandbox()
 {
   FILE *filePtr =
@@ -51,5 +80,6 @@ void UnmountFromSandbox(const char *mountName)
 void ExitApplication()
 {
   EnterSandbox();
+
   sceSystemServiceLoadExec("exit", 0);
 }

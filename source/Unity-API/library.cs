@@ -153,6 +153,11 @@ namespace UnityOrbisBridge
 
         #region Application Operations
         [DllImport("UnityOrbisBridge", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void InitializeNativeDialogs();
+
+
+
+        [DllImport("UnityOrbisBridge", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool IsFreeOfSandbox();
 
 
