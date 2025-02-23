@@ -10,27 +10,32 @@ jobs:
     runs-on: windows-2019
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Check for Visual Studio Build Tools
+      id: check-vsbuildtools
+      run: |
+        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+        if ($vsPath) { echo "VSBuildToolsFound=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 }
 
     - name: Cache Visual Studio Build Tools
       id: cache-vsbuildtools
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: |
-          C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools
-        key: ${{ runner.os }}-vsbuildtools-16.11.5
+        path: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools
+        key: windows-vsbuildtools-16.11.5
         restore-keys: |
-          ${{ runner.os }}-vsbuildtools-16.11
+          windows-vsbuildtools-16.11
 
     - name: Install Visual Studio Build Tools
-      if: steps.cache-vsbuildtools.outputs.cache-hit != 'true'
+      if: steps.check-vsbuildtools.outputs.VSBuildToolsFound != 'true' && steps.cache-vsbuildtools.outputs.cache-hit != 'true'
       run: |
         choco install visualstudio2019buildtools --version=16.11.5.0 -y --no-progress
         Start-Process "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" -ArgumentList "modify", "--quiet", "--wait", "--installPath", "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools", "--add", "Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools", "--add", "Microsoft.VisualStudio.Workload.NetCoreBuildTools" -NoNewWindow -Wait
 
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1
+      uses: microsoft/setup-msbuild@v1.3
 
     - name: Build Solution in Release Configuration
       run: |
