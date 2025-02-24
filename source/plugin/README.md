@@ -147,7 +147,11 @@ A library with various PS4 SDK functions to be called by the matching [.DLL for 
 ### Application Operations
 <details>
   <summary>Click to expand</summary>
-
+  
+  ```c
+  InitializeNativeDialogs();
+  ```
+  
   ```c
   bool isFree = IsFreeOfSandbox();
   ```
