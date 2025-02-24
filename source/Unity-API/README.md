@@ -74,6 +74,7 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
   <summary>Click to expand</summary>
 
   - ```csharp
+    void InitializeNativeDialogs()
     bool IsFreeOfSandbox()
     void EnterSandbox()
     void BreakFromSandbox()
