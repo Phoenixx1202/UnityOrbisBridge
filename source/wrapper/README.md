@@ -50,9 +50,9 @@ A wrapper for interacting with the **`UnityOrbisBridge`** (`.sprx / .dll`) plugi
   ```
   Downloads an image from the specified URL and assigns it to a `RawImage` component.
 
-- **Download File as String**:
+- **Parse File as String**:
   ```csharp
-  string content = UOBWrapper.DownloadAsBytes("http://example.com/file.txt");
+  string content = await UOBWrapper.DownloadAsBytes("http://example.com/file.txt");
   ```
   Downloads content from a URL as a string.
 
