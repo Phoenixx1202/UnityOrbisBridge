@@ -52,9 +52,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ./OpenOrbis/PS4Toolchain
-        key: toolchain-${{ runner.os }}-${{ hashFiles('**/toolchain-llvm-12.tar.gz') }}
+        key: toolchain-${{ runner.os }}-${{ env.llvm_ver }}
         restore-keys: |
-          toolchain-${{ runner.os }}-
+          toolchain-${{ runner.os }}-${{ env.llvm_ver }}
 
     - name: Download OpenOrbis Toolchain
       run: |
@@ -177,7 +177,7 @@ jobs:
 
     - name: Build Solution in Release Configuration
       run: |
-        msbuild.exe source/Unity-API/UnityOrbisBridge.sln /nologo /nr:false /p:Configuration=Release /p:DeployOnBuild=true /p:DeployDefaultTarget=Build /p:platform="Any CPU" /p:TargetFrameworkVersion="v3.5"
+        msbuild.exe source/Unity-API/UnityOrbisBridge.sln /nologo /nr:false /p:Configuration=Release /p:DeployOnBuild=true /p:DeployDefaultTarget=Build /p:platform="Any CPU" /p:TargetFrameworkVersion="v3.5" -m
 
     - name: Check Build Output
       run: |
