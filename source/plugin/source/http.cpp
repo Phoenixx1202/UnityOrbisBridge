@@ -14,6 +14,19 @@ bool downloadErrorOccured = false;
 std::atomic<bool> cancelDownload(false);
 CURL *curl = nullptr;
 
+char *GetDownloadInfo(const char *info)
+{
+    if (strcmp(info, "speed") == 0)
+        return strdup(std::to_string(downloadSpeed).c_str());
+    else if (strcmp(info, "downloaded") == 0)
+        return strdup(std::to_string(currentSize).c_str());
+    else if (strcmp(info, "filesize") == 0)
+        return strdup(std::to_string(totalFileSize).c_str());
+    else if (strcmp(info, "progress") == 0)
+        return strdup(std::to_string(downloadProgress).c_str());
+    return nullptr;
+}
+
 bool HasDownloadCompleted()
 {
     return hasDownloadCompleted;
@@ -50,19 +63,6 @@ void ResetDownloadVars()
 
     hasDownloadCompleted = false;
     downloadErrorOccured = false;
-}
-
-char *GetDownloadInfo(const char *info)
-{
-    if (strcmp(info, "speed") == 0)
-        return strdup(std::to_string(downloadSpeed).c_str());
-    else if (strcmp(info, "downloaded") == 0)
-        return strdup(std::to_string(currentSize).c_str());
-    else if (strcmp(info, "filesize") == 0)
-        return strdup(std::to_string(totalFileSize).c_str());
-    else if (strcmp(info, "progress") == 0)
-        return strdup(std::to_string(downloadProgress).c_str());
-    return nullptr;
 }
 
 void CancelDownload()

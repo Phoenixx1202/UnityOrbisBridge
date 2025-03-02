@@ -17,14 +17,15 @@ extern CURL *curl;
 static int UpdateDownloadProgress(void *bar, int64_t totalSize, int64_t downloadedSize, int64_t, int64_t);
 void BeginDownload(const char *url, const char *pathWithFile);
 static size_t DownloadDataCallback(void *ptr, size_t size, size_t nmemb);
+char *DownloadThread(const char *url, size_t *out_size);
 
 extern "C"
 {
+    char *GetDownloadInfo(const char *info);
     bool HasDownloadCompleted();
     bool HasDownloadErrorOccured();
     void ResetDownloadVars();
+    void CancelDownload();
     void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name);
     char *DownloadAsBytes(const char *url, size_t *out_size);
-    char *GetDownloadInfo(const char *info);
-    void CancelDownload();
 }

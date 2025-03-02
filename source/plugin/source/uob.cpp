@@ -3,11 +3,12 @@
 extern "C"
 {
 #pragma region cURL Web Interactions
-    void ResetDownloadVars();
-    void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name);
     char *GetDownloadInfo(const char *info);
-    long GetDownloadError();
+    bool HasDownloadCompleted();
+    bool HasDownloadErrorOccured();
+    void ResetDownloadVars();
     void CancelDownload();
+    void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name);
     char *DownloadAsBytes(const char *url, size_t *out_size);
 #pragma endregion
 
@@ -52,5 +53,4 @@ extern "C"
     void UnmountFromSandbox(const char *mountName);
     void ExitApplication();
 #pragma endregion
-
 }

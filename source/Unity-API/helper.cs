@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace UnityOrbisBridge
@@ -34,26 +35,22 @@ namespace UnityOrbisBridge
 
         public static string GetDiskInfoAsFormattedText(DiskInfo info, Dictionary<DiskInfo, string> diskInfo)
         {
+            var cultureInfo = CultureInfo.CurrentCulture;
+
             switch (info)
             {
                 case DiskInfo.Free:
-                    return string.Format("Free: {0}", diskInfo[DiskInfo.Free]);
-
+                    return string.Format(cultureInfo, "Free: {0}", diskInfo[DiskInfo.Free]);
                 case DiskInfo.Used:
-                    return string.Format("Used: {0}", diskInfo[DiskInfo.Used]);
-
+                    return string.Format(cultureInfo, "Used: {0}", diskInfo[DiskInfo.Used]);
                 case DiskInfo.Percent:
-                    return string.Format("Used: {0} of {1}", diskInfo[DiskInfo.Percent], diskInfo[DiskInfo.Total]);
-
+                    return string.Format(cultureInfo, "Used: {0} of {1}", diskInfo[DiskInfo.Percent], diskInfo[DiskInfo.Total]);
                 case DiskInfo.AllFormatted:
-                    return string.Format("Used: {0} of {1} ({2})", diskInfo[DiskInfo.Used],
-                        diskInfo[DiskInfo.Total], diskInfo[DiskInfo.Percent]);
-
+                    return string.Format(cultureInfo, "Used: {0} of {1} ({2})", diskInfo[DiskInfo.Used], diskInfo[DiskInfo.Total], diskInfo[DiskInfo.Percent]);
                 default:
                     return string.Empty;
             }
         }
-
         public static float? GetTemperature(Temperature temperature = Temperature.CPU, bool fahrenheit = false)
         {
             uint tempCelsiusUint = temperature == Temperature.CPU
