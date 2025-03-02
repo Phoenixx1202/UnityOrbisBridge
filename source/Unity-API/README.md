@@ -7,9 +7,10 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
   <summary>Click to expand</summary>
   
   - ```csharp
-    void ResetDownloadVars()
     IntPtr GetDownloadInfo(string info)
-    long GetDownloadError()
+    bool HasDownloadCompleted()
+    bool HasDownloadErrorOccured()
+    void ResetDownloadVars()
     void CancelDownload()
     IntPtr DownloadAsBytes(string url, out int size)
     ```
