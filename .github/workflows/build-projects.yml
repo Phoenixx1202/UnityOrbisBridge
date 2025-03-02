@@ -199,12 +199,21 @@ jobs:
       with:
         name: UnityOrbisBridge-DLL
         path: artifacts
-        
+
+    - name: Ensure Target Directories Exist
+      run: |
+        mkdir -p source/plugin source/Unity-API
+
+    - name: Move Artifacts to Target Paths
+      run: |
+        mv artifacts/UnityOrbisBridge.prx source/plugin/ || echo "PRX file not found!"
+        mv artifacts/UnityOrbisBridge.dll source/Unity-API/ || echo "DLL file not found!"
+
     - name: Commit & Push Compiled Binaries
       run: |
         git config user.name "GitHub Actions"
         git config user.email "github-actions@github.com"
-        git add artifacts/UnityOrbisBridge.prx artifacts/UnityOrbisBridge.dll
+        git add source/plugin/UnityOrbisBridge.prx source/Unity-API/UnityOrbisBridge.dll
         git commit -m "Final commit for UnityOrbisBridge build artifacts" || echo "No changes to commit"
         git push origin $GITHUB_REF
 
@@ -212,8 +221,8 @@ jobs:
       run: |
         echo "Creating archive for UnityOrbisBridge..."
         mkdir -p UnityOrbisBridge
-        cp artifacts/UnityOrbisBridge.prx UnityOrbisBridge/
-        cp artifacts/UnityOrbisBridge.prx UnityOrbisBridge/
+        cp source/plugin/UnityOrbisBridge.prx UnityOrbisBridge/
+        cp source/Unity-API/UnityOrbisBridge.dll UnityOrbisBridge/
         zip -r UnityOrbisBridge.zip UnityOrbisBridge
         rm -rf UnityOrbisBridge
 
