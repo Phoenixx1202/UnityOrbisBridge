@@ -52,9 +52,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ./OpenOrbis/PS4Toolchain
-        key: toolchain-${{ runner.os }}-${{ env.llvm_ver }}
+        key: toolchain-${{ runner.os }}-llvm-${{ env.llvm_ver }}
         restore-keys: |
-          toolchain-${{ runner.os }}-${{ env.llvm_ver }}
+          toolchain-${{ runner.os }}-llvm-${{ env.llvm_ver }}
 
     - name: Download OpenOrbis Toolchain
       run: |
