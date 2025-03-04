@@ -16,8 +16,8 @@ extern CURL *curl;
 
 static int UpdateDownloadProgress(void *bar, int64_t totalSize, int64_t downloadedSize, int64_t, int64_t);
 void BeginDownload(const char *url, const char *pathWithFile);
-static size_t DownloadDataCallback(void *ptr, size_t size, size_t nmemb);
-char *DownloadThread(const char *url, size_t *out_size);
+static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t nmemb);
+char *DownloadAsBytesThread(const char *url, size_t *out_size);
 
 extern "C"
 {

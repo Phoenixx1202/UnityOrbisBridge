@@ -110,15 +110,21 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!pathWithFile)
     {
         PrintAndLog("Download path is null.", 3);
+
         downloadErrorOccured = true;
         return;
     }
 
-    FILE *file = fopen(pathWithFile, "wb");
+    FILE *file = fopen(pathWithFile, "w+b");
     if (!file)
     {
-        PrintAndLog(("Failed to open file: " + std::string(pathWithFile) + " due to: " + strerror(errno)).c_str(), 3);
+        PrintAndLog(("Failed to open file: " + std::string(pathWithFile) +
+                     " due to: " + strerror(errno))
+                        .c_str(),
+                    3);
+
         downloadErrorOccured = true;
+
         return;
     }
 
@@ -126,8 +132,11 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!filePath)
     {
         PrintAndLog("Memory allocation failed for filePath.", 3);
-        downloadErrorOccured = true;
+
         fclose(file);
+
+        downloadErrorOccured = true;
+
         return;
     }
 
@@ -138,13 +147,17 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!curl)
     {
         PrintAndLog("CURL failed to initialize.", 3);
-        downloadErrorOccured = true;
+
         fclose(file);
         unlink(filePath);
         free(filePath);
         filePath = nullptr;
+
         if (!threadDownload)
             sceMsgDialogTerminate();
+
+        downloadErrorOccured = true;
+
         return;
     }
 
@@ -154,33 +167,24 @@ void BeginDownload(const char *url, const char *pathWithFile)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
     curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20);
-    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, UpdateDownloadProgress);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, nullptr);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, UpdateDownloadProgress);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20);
 
     CURLcode result = curl_easy_perform(curl);
-    if (result != CURLE_OK)
+    if (result == CURLE_OK)
+        PrintAndLog(("The download (" + std::string(url) + ") completed and has been saved to \"" + std::string(pathWithFile) + "\".").c_str(), 1);
+    else
     {
-        if (result == CURLE_ABORTED_BY_CALLBACK)
-            PrintAndLog(std::string(curl_easy_strerror(result)).c_str(), 2);
-        else
-        {
-            PrintAndLog(("Download failed with error: " + std::string(curl_easy_strerror(result))).c_str(), 3);
-            downloadErrorOccured = true;
-        }
-
+        PrintAndLog(("Download failed with error: " + std::string(curl_easy_strerror(result))).c_str(), 3);
+        downloadErrorOccured = true;
         unlink(filePath);
     }
-    else
-        PrintAndLog("Download completed successfully.", 1);
-
-    hasDownloadCompleted = true;
 
     curl_easy_cleanup(curl);
     curl = nullptr;
@@ -191,6 +195,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
 
     if (!threadDownload)
         sceMsgDialogTerminate();
+
+    hasDownloadCompleted = true;
 }
 
 void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name)
@@ -224,7 +230,7 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
     PrintAndLog(("Downloading file and writing to: " + std::string(pathWithFile)).c_str(), 1);
 }
 
-static size_t DownloadDataCallback(void *ptr, size_t size, size_t count)
+static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t count)
 {
     size_t totalSize = size * count;
 
@@ -245,7 +251,7 @@ static size_t DownloadDataCallback(void *ptr, size_t size, size_t count)
     return totalSize;
 }
 
-char *DownloadThread(const char *url, size_t *out_size)
+char *DownloadAsBytesThread(const char *url, size_t *out_size)
 {
     CURL *curl = curl_easy_init();
     if (!curl)
@@ -259,13 +265,14 @@ char *DownloadThread(const char *url, size_t *out_size)
     bufferSize = 0;
 
     std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
-
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadDataCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, NULL);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadAsBytesCallback);
 
     CURLcode result = curl_easy_perform(curl);
     if (result != CURLE_OK)
@@ -288,7 +295,7 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
     std::future<char *> future = std::async(std::launch::async,
                                             [url, out_size]()
                                             {
-                                                return DownloadThread(url, out_size);
+                                                return DownloadAsBytesThread(url, out_size);
                                             });
 
     return future.get();
