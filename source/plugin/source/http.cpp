@@ -103,6 +103,42 @@ static int UpdateDownloadProgress(void *, int64_t totalSize, int64_t downloadedS
     return 0;
 }
 
+size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data)
+{
+    std::string header((char *)ptr, size * nmemb);
+
+    if (header.find("Content-Disposition: attachment") != std::string::npos)
+    {
+        PrintAndLog("Server is sending the file as an attachment.", 1);
+
+        size_t filenamePos = header.find("filename=");
+        if (filenamePos != std::string::npos)
+        {
+            size_t start = header.find_first_not_of(" \t", filenamePos + 9);
+            if (start != std::string::npos)
+            {
+                if (header[start] == '"')
+                {
+                    size_t end = header.find('"', start + 1);
+                    if (end != std::string::npos)
+                    {
+                        std::string filename = header.substr(start + 1, end - start - 1);
+                        PrintAndLog(("Filename from header: " + filename).c_str(), 1);
+                    }
+                }
+                else
+                {
+                    size_t end = header.find_first_of(" \r\n", start);
+                    std::string filename = header.substr(start, end - start);
+                    PrintAndLog(("Filename from header: " + filename).c_str(), 1);
+                }
+            }
+        }
+    }
+
+    return size * nmemb;
+}
+
 void BeginDownload(const char *url, const char *pathWithFile)
 {
     ResetDownloadVars();
@@ -110,7 +146,6 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!pathWithFile)
     {
         PrintAndLog("Download path is null.", 3);
-
         downloadErrorOccured = true;
         return;
     }
@@ -122,9 +157,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
                      " due to: " + strerror(errno))
                         .c_str(),
                     3);
-
         downloadErrorOccured = true;
-
         return;
     }
 
@@ -132,11 +165,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!filePath)
     {
         PrintAndLog("Memory allocation failed for filePath.", 3);
-
         fclose(file);
-
         downloadErrorOccured = true;
-
         return;
     }
 
@@ -147,17 +177,13 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!curl)
     {
         PrintAndLog("CURL failed to initialize.", 3);
-
         fclose(file);
         unlink(filePath);
         free(filePath);
         filePath = nullptr;
-
         if (!threadDownload)
             sceMsgDialogTerminate();
-
         downloadErrorOccured = true;
-
         return;
     }
 
@@ -174,7 +200,9 @@ void BeginDownload(const char *url, const char *pathWithFile)
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, UpdateDownloadProgress);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 20);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, file);
 
     CURLcode result = curl_easy_perform(curl);
     if (result == CURLE_OK)

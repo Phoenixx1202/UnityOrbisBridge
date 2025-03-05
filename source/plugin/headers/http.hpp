@@ -15,6 +15,7 @@ extern std::atomic<bool> cancelDownload;
 extern CURL *curl;
 
 static int UpdateDownloadProgress(void *bar, int64_t totalSize, int64_t downloadedSize, int64_t, int64_t);
+size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data);
 void BeginDownload(const char *url, const char *pathWithFile);
 static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t nmemb);
 char *DownloadAsBytesThread(const char *url, size_t *out_size);
