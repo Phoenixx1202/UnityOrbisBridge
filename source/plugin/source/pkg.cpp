@@ -1,6 +1,5 @@
 #include "../headers/includes.hpp"
 
-
 bool sceAppInst_done = false;
 static bool s_bgft_initialized = false;
 static struct bgft_init_params s_bgft_init_params;
@@ -236,6 +235,9 @@ uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
 {
     char title_id[16];
     int ret = -1, task_id = -1;
+
+    if (url != nullptr)
+        url = FollowRedirectsAndLog(url);
 
     if (!bgft_init())
         return PKG_ERROR("BGFT initialization", ret);

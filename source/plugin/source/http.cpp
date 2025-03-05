@@ -199,10 +199,9 @@ void BeginDownload(const char *url, const char *pathWithFile)
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, UpdateDownloadProgress);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, file);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);  // Handle redirects
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10);      // Max redirects to follow
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);  // Handle headers for attachment processing
 
     CURLcode result = curl_easy_perform(curl);
     if (result == CURLE_OK)
@@ -327,4 +326,36 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
                                             });
 
     return future.get();
+}
+
+char *FollowRedirectsAndLog(const char *url)
+{
+    CURL *curl = curl_easy_init();
+    if (!curl)
+        return nullptr;
+
+    std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, -1L);
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    char *finalUrl = nullptr;
+    if (res == CURLE_OK)
+    {
+        curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &finalUrl);
+        if (finalUrl)
+            printAndLog(0, "Final URL: %s", finalUrl);
+    }
+
+    curl_easy_cleanup(curl);
+    
+    return finalUrl;
 }
