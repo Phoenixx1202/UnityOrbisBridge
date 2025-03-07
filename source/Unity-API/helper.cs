@@ -53,10 +53,9 @@ namespace UnityOrbisBridge
         }
         public static float? GetTemperature(Temperature temperature = Temperature.CPU, bool fahrenheit = false)
         {
-            uint tempCelsiusUint = temperature == Temperature.CPU
+            uint tempCelsius = temperature == Temperature.CPU
                 ? PrivateImports.GetCPUTemperature() : PrivateImports.GetSOCTemperature();
 
-            float tempCelsius = (float)tempCelsiusUint;
             return fahrenheit ? tempCelsius * 9 / 5 + 32 : tempCelsius;
         }
 

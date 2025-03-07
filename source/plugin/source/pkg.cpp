@@ -236,8 +236,9 @@ uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
     char title_id[16];
     int ret = -1, task_id = -1;
 
-    if (url != nullptr)
-        url = FollowRedirectsAndLog(url);
+    const char *redirected_url = FollowRedirects(url);
+    if (redirected_url != nullptr)
+        url = redirected_url; 
 
     if (!bgft_init())
         return PKG_ERROR("BGFT initialization", ret);
@@ -254,21 +255,28 @@ uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
 
 retry:
     ret = sceBgftServiceIntDebugDownloadRegisterPkg(&download_params, &task_id);
+    if (ret == 0x80F00633)
+    {
+        TextNotify(0, "Please change NP Environment\nin \"Debug Settings\" from\n \"NP\" to \"SP-INT\".");
+
+        ret = 0;
+    }
+
     if (ret == 0x80990088 || ret == 0x80990015)
     {
-        ret = sceAppInstUtilAppUnInstall(&title_id[0]);
+        ret = sceAppInstUtilAppUnInstall(title_id);
+
         if (ret != 0)
             return PKG_ERROR("sceAppInstUtilAppUnInstall", ret);
 
         goto retry;
     }
-    else if (ret)
+
+    if (ret)
         return PKG_ERROR("sceBgftServiceIntDebugDownloadRegisterPkg", ret);
 
-    if (ret == 0x80F00633)
-        TextNotify(0, "Please change NP Environment\nin \"Debug Settings\" from\n \"NP\" to \"SP-INT\".");
-
     ret = sceBgftServiceDownloadStartTask(task_id);
+
     if (ret)
         return PKG_ERROR("sceBgftDownloadStartTask", ret);
 

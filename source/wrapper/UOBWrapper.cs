@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -46,7 +47,8 @@ public static class UOBWrapper
                 if (coldColor.HasValue || normalColor.HasValue || hotColor.HasValue)
                     textObject.color = DetermineColor(celsiusTemp, coldColor, normalColor, hotColor, min, max);
 
-                textObject.text = $"{sensorString}: {celsiusTemp} °C / {fahrenheitTemp ?? 0f} °F";
+                textObject.text = $"{sensorString}: {celsiusTemp.ToString(CultureInfo.InvariantCulture)}" +
+                    $" °C / {fahrenheitTemp.Value.ToString(CultureInfo.InvariantCulture)} °F";
             }
 
             public static void Update(Text textObject, UOB.Temperature temperature, Color? coldColor = null, Color? normalColor = null, Color? hotColor = null, float min = 55f, float max = 70f)
@@ -54,7 +56,6 @@ public static class UOBWrapper
                 if (Application.platform != RuntimePlatform.PS4) return;
 
                 string sensorString = temperature == UOB.Temperature.CPU ? "CPU" : "SoC";
-
                 float? celsiusTemp = UOB.GetTemperature(temperature, false);
                 float? fahrenheitTemp = UOB.GetTemperature(temperature, true);
 

@@ -13,6 +13,7 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
     void ResetDownloadVars()
     void CancelDownload()
     IntPtr DownloadAsBytes(string url, out int size)
+    bool IsInternetAvailable();
     ```
     
 </details>
