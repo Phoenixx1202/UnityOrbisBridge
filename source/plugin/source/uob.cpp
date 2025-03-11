@@ -20,6 +20,7 @@ extern "C"
 #pragma endregion
 
 #pragma region System Information
+    bool IsPlayStation5();
     const char *GetFWVersion();
     const char *GetConsoleType();
     int32_t GetSystemLanguageID();
@@ -42,6 +43,7 @@ extern "C"
     void MountRootDirectories();
     void InstallLocalPackage(const char *uri, const char *name, bool deleteAfter);
     void DownloadAndInstallPKG(const char *url, const char *name, const char *iconURL);
+    bool CheckIfAppExists(const char *titleId);
 #pragma endregion
 
 #pragma region Application Operations

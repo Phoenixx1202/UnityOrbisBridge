@@ -8,6 +8,7 @@
 #include <cstdarg>
 #include <inttypes.h>
 #include <future>
+#include <arpa/inet.h>
 
 #include <orbis/CommonDialog.h>
 #include <orbis/ImeDialog.h>
@@ -28,4 +29,4 @@
 #include "unity.hpp"
 #include "utilities.hpp"
 
-#include "fmt/format.h"
+#include "fmt/format.h" // keep below Utilities.h

@@ -44,6 +44,26 @@ void ImageNotify(const char *iconUri, const char *text)
 #pragma endregion
 
 #pragma region System Information
+bool IsPlayStation5()
+{
+    const char *goldHENPath = "/data/GoldHEN/";
+    const char *etaHENPath = "/data/etaHEN/";
+    const char *devA53mmPath = "/dev/a53mm";
+    const char *devA53mmsysPath = "/dev/a53mmsys";
+    const char *devA53ioPath = "/dev/a53io";
+
+    auto pathExists = [](const char *path) -> bool
+    {
+        struct stat buffer;
+        return (stat(path, &buffer) == 0);
+    };
+
+    if (pathExists(goldHENPath))
+        return false;
+
+    return pathExists(etaHENPath) || ((pathExists(devA53mmPath) && pathExists(devA53mmsysPath)) && pathExists(devA53ioPath));
+}
+
 const char *GetFWVersion()
 {
     static char versionString[6] = {0};
@@ -227,9 +247,7 @@ void MountRootDirectories()
         "/system_ex"};
 
     for (int i = 0; i < 4; ++i)
-    {
         mount_large_fs(devices[i], mount_points[i], "exfatfs", "511", 0x0000000000010000ULL);
-    }
 }
 
 void InstallLocalPackage(const char *uri, const char *name, bool deleteAfter)
@@ -255,5 +273,12 @@ void DownloadAndInstallPKG(const char *url, const char *name, const char *iconUR
         PrintToConsole("Package installation failed.", 2);
     else
         PrintToConsole("Package installation succeeded.", 0);
+}
+
+bool CheckIfAppExists(const char *titleId)
+{
+    struct stat info;
+    std::string path = "/user/app/" + std::string(titleId);
+    return (stat(path.c_str(), &info) == 0 && (info.st_mode & S_IFDIR));
 }
 #pragma endregion
