@@ -61,7 +61,10 @@ bool IsPlayStation5()
     if (pathExists(goldHENPath))
         return false;
 
-    return pathExists(etaHENPath) || ((pathExists(devA53mmPath) && pathExists(devA53mmsysPath)) && pathExists(devA53ioPath));
+    return pathExists(etaHENPath) ||
+           ((pathExists(devA53mmPath) ||
+             pathExists(devA53mmsysPath)) ||
+            pathExists(devA53ioPath));
 }
 
 const char *GetFWVersion()

@@ -47,12 +47,12 @@ extern "C"
 #pragma endregion
 
 #pragma region Application Operations
-    void InitializeNativeDialogs();
     bool IsFreeOfSandbox();
     void EnterSandbox();
     void BreakFromSandbox();
     void MountInSandbox(const char *systemPath, const char *mountName);
     void UnmountFromSandbox(const char *mountName);
+    void InitializeNativeDialogs();
     void ExitApplication();
 #pragma endregion
 }
