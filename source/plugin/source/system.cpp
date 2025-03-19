@@ -306,7 +306,7 @@ void InstallWebPackage(const char *url, const char *name, const char *iconURL)
     }
 
     if (!IsPlayStation5())
-        status = installWebPKG(redirected_url, name, iconURL) != 0;
+        status = installWebPKG(url, name, iconURL) != 0;
     else
         status = SendInstallRequestForPS5(url);
 
