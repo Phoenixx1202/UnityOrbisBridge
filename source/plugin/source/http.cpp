@@ -1,14 +1,14 @@
 #include "../headers/includes.hpp"
 
 bool threadDownload = true;
-char *fileName = nullptr;
+const char *fileName = nullptr;
+const char *filePath = nullptr;
 int downloadProgress = 0;
 int64_t totalFileSize = 0;
 int64_t currentSize = 0;
 double downloadSpeed = 0.0;
 char *dataBuffer = nullptr;
 size_t bufferSize = 0;
-char *filePath = nullptr;
 bool hasDownloadCompleted = false;
 bool downloadErrorOccured = false;
 std::atomic<bool> cancelDownload(false);
@@ -40,29 +40,26 @@ bool HasDownloadErrorOccured()
 void ResetDownloadVars()
 {
     cancelDownload.store(false);
+    fileName = nullptr;
+    filePath = nullptr;
     downloadProgress = 0;
     totalFileSize = 0;
     currentSize = 0;
     downloadSpeed = 0.0;
 
-    if (fileName)
-    {
-        free(fileName);
-        fileName = nullptr;
-    }
-
     free(dataBuffer);
     dataBuffer = nullptr;
+
     bufferSize = 0;
+
+    hasDownloadCompleted = false;
+    downloadErrorOccured = false;
 
     if (curl)
     {
         curl_easy_cleanup(curl);
         curl = nullptr;
     }
-
-    hasDownloadCompleted = false;
-    downloadErrorOccured = false;
 }
 
 void CancelDownload()
@@ -95,7 +92,7 @@ static int UpdateDownloadProgress(void *, int64_t totalSize, int64_t downloadedS
             if (!fileName || strcmp(fileName, "NULL") == 0)
                 setProgressMsgText(downloadProgress, "Downloading...");
             else
-                setProgressMsgText(downloadProgress, "Downloading \"%s\"", fileName);
+                setProgressMsgText(downloadProgress, "Downloading \"%s\"...", fileName);
         }
     }
 
@@ -153,7 +150,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
 
     if (access(resumePath.c_str(), F_OK) == 0)
     {
-        file = fopen(resumePath.c_str(), "a+b");
+        file = fopen(resumePath.c_str(), "r+b");
         if (file)
         {
             fseek(file, 0, SEEK_END);
@@ -162,9 +159,9 @@ void BeginDownload(const char *url, const char *pathWithFile)
         else
         {
             PrintAndLog("Failed to open resume file.", 3);
-           
+
             downloadErrorOccured = true;
-           
+
             return;
         }
     }
@@ -174,9 +171,9 @@ void BeginDownload(const char *url, const char *pathWithFile)
         if (!file)
         {
             PrintAndLog("Failed to open file for writing.", 3);
-            
+
             downloadErrorOccured = true;
-           
+
             return;
         }
     }
@@ -185,11 +182,11 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!filePath)
     {
         PrintAndLog("Memory allocation failed for filePath.", 3);
-        
+
         fclose(file);
-       
+
         downloadErrorOccured = true;
-      
+
         return;
     }
 
@@ -200,11 +197,10 @@ void BeginDownload(const char *url, const char *pathWithFile)
     if (!curl)
     {
         PrintAndLog("CURL failed to initialize.", 3);
-       
+
         fclose(file);
         fileClosed = true;
         unlink(filePath);
-        free(filePath);
         filePath = nullptr;
 
         if (!threadDownload)
@@ -229,6 +225,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+
     if (resume_offset > 0)
         curl_easy_setopt(curl, CURLOPT_RESUME_FROM, resume_offset);
 
@@ -274,7 +271,6 @@ void BeginDownload(const char *url, const char *pathWithFile)
         fileClosed = true;
     }
 
-    free(filePath);
     filePath = nullptr;
 
     if (!threadDownload)
@@ -293,15 +289,10 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
         return;
     }
 
-    if (fileName)
-        free(fileName);
-
-    fileName = name ? strdup(name) : nullptr;
+    fileName = name;
 
     if (!bgDL)
-    {
         BeginDownload(url, pathWithFile);
-    }
     else
     {
         std::string urlCopy(url);
@@ -392,7 +383,7 @@ char *FollowRedirects(const char *url)
 {
     CURL *curl;
     CURLcode curl_res;
-    char *finalUrl = nullptr;
+    const char *finalUrl = nullptr;
 
     curl_global_init(CURL_GLOBAL_ALL);
     curl = curl_easy_init();
@@ -418,5 +409,13 @@ char *FollowRedirects(const char *url)
 
     curl_global_cleanup();
 
-    return finalUrl ? strdup(finalUrl) : nullptr;
+    if (finalUrl)
+    {
+        size_t len = strlen(finalUrl) + 1;
+        char *result = new char[len];
+        memcpy(result, finalUrl, len);
+        return result;
+    }
+
+    return nullptr;
 }

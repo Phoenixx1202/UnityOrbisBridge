@@ -1,14 +1,14 @@
 #pragma once
 
 extern bool threadDownload;
-extern char *fileName;
+extern const char *fileName;
+extern const char *filePath;
 extern int downloadProgress;
 extern int64_t totalFileSize;
 extern int64_t currentSize;
 extern double downloadSpeed;
 extern char *dataBuffer;
 extern size_t bufferSize;
-extern char *filePath;
 extern bool hasDownloadCompleted;
 extern bool downloadErrorOccured;
 extern std::atomic<bool> cancelDownload;

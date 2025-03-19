@@ -5,27 +5,6 @@ jbc_cred g_Creds, g_RootCreds;
 static bool nativeDialogInitialized = false;
 static bool hasBrokenFromTheSandbox = false;
 
-enum Commands : int
-{
-    INVALID_CMD = -1,
-    ACTIVE_CMD = 0,
-    LAUNCH_CMD,
-    PROCLIST_CMD,
-    KILL_CMD,
-    KILL_APP_CMD,
-    JAILBREAK_CMD
-};
-
-struct HijackerCommand
-{
-    int magic = 0xDEADBEEF;
-    Commands cmd = INVALID_CMD;
-    int PID = -1;
-    int ret = -1337;
-    char msg1[0x500];
-    char msg2[0x500];
-};
-
 int HJOpenConnectionforBC()
 {
     struct sockaddr_in address;
@@ -85,25 +64,14 @@ bool IsFreeOfSandbox()
     if (hasBrokenFromTheSandbox)
         return true;
 
-    if (IsPlayStation5())
-    {
-        struct stat info;
-        if (stat("/data/etaHEN/", &info) != 0)
-            return false;
+    FILE *filePtr = fopen("/user/.jailbreak", "w");
+    if (!filePtr)
+        return false;
 
-        return (info.st_mode & S_IFDIR) != 0;
-    }
-    else
-    {
-        FILE *filePtr = fopen("/user/.jailbreak", "w");
-        if (!filePtr)
-            return false;
+    fclose(filePtr);
+    remove("/user/.jailbreak");
 
-        fclose(filePtr);
-        remove("/user/.jailbreak");
-
-        return true;
-    }
+    return true;
 }
 
 void EnterSandbox()
@@ -113,6 +81,8 @@ void EnterSandbox()
 
     if (IsFreeOfSandbox())
         jbc_set_cred(&g_Creds);
+
+    hasBrokenFromTheSandbox = false;
 }
 
 void BreakFromSandbox()
@@ -122,7 +92,6 @@ void BreakFromSandbox()
 
     if (IsPlayStation5())
     {
-
         int ret = HJOpenConnectionforBC();
         if (ret < 0)
         {
@@ -201,4 +170,108 @@ void ExitApplication()
     EnterSandbox();
 
     sceSystemServiceLoadExec("exit", 0);
+}
+
+void UpdateViaHomebrewStore(const char *query)
+{
+    int32_t userId = 0;
+    char *titleId = nullptr;
+
+    BreakFromSandbox();
+
+    while (!IsFreeOfSandbox())
+        sceKernelSleep(1);
+
+    InitializeNativeDialogs();
+
+    if (!CheckIfAppExists("NPXS39041"))
+    {
+        printAndLog(0, "The Homebrew Store currently isnt installed...");
+
+        const char *storeUrl = IsPlayStation5()
+                                   ? "https://pkg-zone.com/update/Store-R2-PS5.pkg"
+                                   : "https://pkg-zone.com/update/Store-R2.pkg";
+
+        printAndLog(0, "Attempting to download the Homebrew Store...");
+
+        DownloadWebFile(storeUrl, "/user/app/store_download.pkg", false, "Homebrew Store");
+
+        while (downloadProgress < 99 && !hasDownloadCompleted && !downloadErrorOccured)
+            sceKernelSleep(1);
+
+        if (hasDownloadCompleted && !downloadErrorOccured)
+        {
+            printAndLog(0, "Now installing the Homebrew Store...");
+
+            InstallLocalPackage("/user/app/store_download.pkg", "Homebrew Store", true);
+
+            if (IsPlayStation5())
+            {
+                while (!CheckIfAppExists("NPXS39041"))
+                    sceKernelSleep(1);
+            }
+
+            ResetDownloadVars();
+        }
+        else
+        {
+            printAndLog(0, "Failed to download the Homebrew Store!");
+
+            return;
+        }
+    }
+    else
+        printAndLog(0, "Homebrew Store is installed, launching...");
+
+    if (!IsPlayStation5())
+    {
+        int storeId = sceSystemServiceGetAppIdOfMiniApp();
+        if ((storeId & ~0xFFFFFF) == 0x60000000 && if_exists("/mnt/sandbox/pfsmnt/NPXS39041-app0/"))
+        {
+            printAndLog(0, "Closing Homebrew Store for re-launch!...");
+
+            sceSystemServiceKillApp(storeId, -1, 0, 0);
+        }
+    }
+
+
+    if (!IsPlayStation5())
+    {
+        if (query != nullptr && query[0] != '\0')
+            titleId = strdup(query);
+        else
+            sceLncUtilGetAppTitleId(sceSystemServiceGetAppIdOfBigApp(), titleId);
+    }
+    else
+    {
+        if (query != nullptr && query[0] != '\0')
+            titleId = strdup(query);
+        else
+        {
+            printAndLog(0, "No query provided to launch Homebrew Store...");
+
+            return;
+        }
+    }
+
+    const char *argv[] = {titleId, nullptr};
+
+    LncAppParam param;
+    param.size = sizeof(LncAppParam);
+    param.user_id = userId;
+    param.app_opt = 0;
+    param.crash_report = 0;
+    param.LaunchAppCheck_flag = LaunchApp_SkipSystemUpdate;
+  
+    printAndLog(0, "Attempting to launch Homebrew Store with \"%s\" query...", titleId);
+
+    uint32_t res = sceLncUtilLaunchApp("NPXS39041", argv, &param);
+    if ((res & 0x80000000) && res != 2157182993)
+        printAndLog(0, "App launch failed with error code: %u", res);
+
+    if (res == 2157182993)
+        printAndLog(0, "Homebrew Store has launched successfully!");
+
+    if (titleId)
+        free(titleId);
 }

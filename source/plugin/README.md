@@ -8,26 +8,30 @@ A library with various PS4 SDK functions to be called by the matching [.DLL for 
   <summary>Click to expand</summary>
 
   ```c
+  string[] infoTypes = { "downloaded", "filesize", "progress" };
+  char *info = GetDownloadInfo(infoType[0].c_str());
+  ```
+
+  ```c
+  bool finished = HasDownloadCompleted();
+  ```
+
+  ```c
+  bool error = HasDownloadErrorOccured();
+  ```
+
+  ```c
   ResetDownloadVars();
+  ```
+
+  ```c
+  CancelDownload();
   ```
 
   ```c
   bool isBackgroundDL = true;
   bool displayName = "Content Title"; // used for displaying download progress on foreground downloads
   DownloadWebFile("http://example.com/file.txt", "/user/data/directory", isBackgroundDL, displayName);
-  ```
-
-  ```c
-  string[] infoTypes = { "downloaded", "filesize", "progress" };
-  char *info = GetDownloadInfo(infoType[0].c_str());
-  ```
-
-  ```c
-  long error = GetDownloadError();
-  ```
-
-  ```c
-  CancelDownload();
   ```
 
   ```c
@@ -62,6 +66,10 @@ A library with various PS4 SDK functions to be called by the matching [.DLL for 
 ### System Information
 <details>
   <summary>Click to expand</summary>
+
+  ```c
+  bool isPS5 = IsPlayStation5();
+  ```
 
   ```c
   const char *firmwareVersion = GetFWVersion();
@@ -133,13 +141,17 @@ A library with various PS4 SDK functions to be called by the matching [.DLL for 
   ```
 
   ```c
-  bool isBackgroundDL = true;
+  bool deleteAfter = true;
   bool displayName = "Content Title"; // used for displaying download progress on foreground downloads
-  InstallLocalPackage("/user/data/pkg", displayName, isBackgroundDL);
+  InstallLocalPackage("/user/data/pkg", displayName, deleteAfter);
   ```
 
   ```c
-  DownloadAndInstallPKG("http://example.com/content.pkg", "Content Title", "http://example.com/icon.png");
+  InstallWebPackage("http://example.com/content.pkg", "Content Title", "http://example.com/icon.png");
+  ```
+
+  ```c
+  CheckIfAppExists("CUSA00000");
   ```
 
 </details>
@@ -165,17 +177,20 @@ A library with various PS4 SDK functions to be called by the matching [.DLL for 
   ```
 
   ```c
-  MountInSandbox("/path/to/system", "mountName");
+  MountInSandbox("/mnt/ext0/system", "externalDrive");
   ```
 
   ```c
-  UnmountFromSandbox("mountName");
+  UnmountFromSandbox("externalDrive");
   ```
 
   ```c
   ExitApplication();
   ```
 
+  ```c
+  UpdateViaHomebrewStore("CUSA00000"); // this can be title ID, app name, or left empty to auto-pass title ID
+  ```
 </details>
 
 ## License

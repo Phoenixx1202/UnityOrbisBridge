@@ -46,8 +46,8 @@ void ImageNotify(const char *iconUri, const char *text)
 #pragma region System Information
 bool IsPlayStation5()
 {
-    const char *goldHENPath = "/data/GoldHEN/";
-    const char *etaHENPath = "/data/etaHEN/";
+    const char *goldHENPath = "/data/GoldHEN";
+    const char *etaHENPath = "/data/etaHEN";
     const char *devA53mmPath = "/dev/a53mm";
     const char *devA53mmsysPath = "/dev/a53mmsys";
     const char *devA53ioPath = "/dev/a53io";
@@ -69,12 +69,18 @@ bool IsPlayStation5()
 
 const char *GetFWVersion()
 {
-    static char versionString[6] = {0};
+    static char versionString[32];
     OrbisKernelSwVersion versionInfo;
+
+    versionInfo.Size = sizeof(OrbisKernelSwVersion);
+
     if (sceKernelGetSystemSwVersion(&versionInfo) < 0)
-        return NULL;
-    strncpy(versionString, versionInfo.VersionString, 5);
-    return versionString;
+        return "00.00";
+
+    strncpy(versionString, versionInfo.VersionString, sizeof(versionString) - 1);
+    versionString[sizeof(versionString) - 1] = '\0';
+
+    return versionString[0] ? versionString : "00.00";
 }
 
 const char *GetConsoleType()
@@ -120,6 +126,7 @@ uint32_t GetSOCTemperature()
     sceKernelGetSocSensorTemperature(0, &celsius);
     return celsius;
 }
+
 #pragma endregion
 
 #pragma region System Control
@@ -207,17 +214,29 @@ const char *GetDiskInfo(const char *infoType)
     return result.c_str();
 }
 
+void CreateDirectory(const char *dirPath)
+{
+    struct stat info;
+    if (stat(dirPath, &info) == 0 && (info.st_mode & S_IFDIR))
+        return;
+
+    if (mkdir(dirPath, 0777) != 0)
+        PrintToConsole(("Failed to create directory: " + std::string(strerror(errno))).c_str(), 2);
+}
+
 void WriteFile(const char *content, const char *file)
 {
     int fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1)
     {
         PrintToConsole("WriteFile(): Error opening file", 2);
+
         return;
     }
     std::string _content = std::string(content) + "\n";
     if (write(fd, _content.c_str(), _content.length()) == -1)
         PrintToConsole("WriteFile(): Error writing to file", 2);
+
     close(fd);
 }
 
@@ -229,9 +248,11 @@ void AppendFile(const char *content, const char *file)
         PrintToConsole("AppendFile(): Error opening file", 2);
         return;
     }
+
     std::string _content = std::string(content) + "\n";
     if (write(fd, _content.c_str(), _content.length()) == -1)
         PrintToConsole("AppendFile(): Error writing to file", 2);
+
     close(fd);
 }
 
@@ -253,35 +274,57 @@ void MountRootDirectories()
         mount_large_fs(devices[i], mount_points[i], "exfatfs", "511", 0x0000000000010000ULL);
 }
 
-void InstallLocalPackage(const char *uri, const char *name, bool deleteAfter)
+void InstallLocalPackage(const char *file, const char *name, bool deleteAfter)
 {
-    InitializeNativeDialogs();
+    bool status = false;
 
     PrintToConsole("Starting package installation...", 0);
 
-    if (installPKG(uri, name, deleteAfter) != 0)
-        PrintToConsole("Package installation failed.", 2);
+    InitializeNativeDialogs();
+
+    if (!IsPlayStation5())
+        status = installPKG(file, name, deleteAfter) == 0;
     else
-        PrintToConsole("Package installation succeeded.", 0);
+        status = SendInstallRequestForPS5(file);
+
+    printAndLog(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
-// RENAME TO InstallWebPackage
-void DownloadAndInstallPKG(const char *url, const char *name, const char *iconURL)
+void InstallWebPackage(const char *url, const char *name, const char *iconURL)
 {
-    InitializeNativeDialogs();
+    bool status = false;
 
     PrintToConsole("Starting package installation...", 0);
 
-    if (installWebPKG(url, name, iconURL) != 0)
-        PrintToConsole("Package installation failed.", 2);
+    InitializeNativeDialogs();
+
+    const char *redirected_url = FollowRedirects(url);
+    if (redirected_url != nullptr)
+    {
+        url = redirected_url;
+        printAndLog(1, "Redirected URL: %s", url);
+    }
+
+    if (!IsPlayStation5())
+        status = installWebPKG(redirected_url, name, iconURL) != 0;
     else
-        PrintToConsole("Package installation succeeded.", 0);
+        status = SendInstallRequestForPS5(url);
+
+    printAndLog(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
 bool CheckIfAppExists(const char *titleId)
 {
     struct stat info;
-    std::string path = "/user/app/" + std::string(titleId);
-    return (stat(path.c_str(), &info) == 0 && (info.st_mode & S_IFDIR));
+    std::string paths[] = {"/user/app/", "/mnt/ext0/user/app/"};
+
+    for (const auto &path : paths)
+    {
+        if (stat((path + titleId).c_str(), &info) == 0 && (info.st_mode & S_IFDIR))
+            return true;
+    }
+
+    return false;
 }
+
 #pragma endregion

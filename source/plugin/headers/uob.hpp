@@ -38,11 +38,12 @@ extern "C"
 
 #pragma region Filesystem Operations
     const char *GetDiskInfo(const char *infoType);
+    void CreateDirectory(const char *dirPath);
     void WriteFile(const char *content, const char *file);
     void AppendFile(const char *content, const char *file);
     void MountRootDirectories();
-    void InstallLocalPackage(const char *uri, const char *name, bool deleteAfter);
-    void DownloadAndInstallPKG(const char *url, const char *name, const char *iconURL);
+    void InstallLocalPackage(const char *file, const char *name, bool deleteAfter);
+    void InstallWebPackage(const char *url, const char *name, const char *iconURL);
     bool CheckIfAppExists(const char *titleId);
 #pragma endregion
 
@@ -54,5 +55,6 @@ extern "C"
     void UnmountFromSandbox(const char *mountName);
     void InitializeNativeDialogs();
     void ExitApplication();
-#pragma endregion
+    void UpdateViaHomebrewStore(const char *query);
+    #pragma endregion
 }

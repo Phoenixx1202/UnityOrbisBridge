@@ -10,56 +10,56 @@ LIBS        := -lc -lc++ -lz -lkernel -ljbc -lcurl -lpolarssl                   
                -lSceSysUtil -lSceMsgDialog -lSceCommonDialog                                     \
 
 # Additional compile flags.
-EXTRAFLAGS   := -Wall -Wno-int-to-pointer-cast -Werror -Wno-for-loop-analysis                    \
+EXTRAFLAGS  := -Wall -Wno-int-to-pointer-cast -Werror -Wno-for-loop-analysis                     \
                -fcolor-diagnostics -Iinclude -Wall -D__ORBIS__ -D__PS4__                         \
                -Wno-unused-function -Wno-misleading-indentation -Wno-invalid-noreturn
 
 # Root vars.
-TOOLCHAIN    := $(OO_PS4_TOOLCHAIN)
-PROJDIR      := source
-INTDIR       := build
+TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
+PROJDIR     := source
+INTDIR      := build
 
 # Define objects to build.
-CFILES       := $(wildcard $(PROJDIR)/*.c)
-CPPFILES     := $(wildcard $(PROJDIR)/*.cpp)
-ASMFILES     := $(wildcard $(PROJDIR)/*.s)
+CFILES      := $(wildcard $(PROJDIR)/*.c)
+CPPFILES    := $(wildcard $(PROJDIR)/*.cpp)
+ASMFILES    := $(wildcard $(PROJDIR)/*.s)
 
-OBJS         :=                                                                                  \
+OBJS        :=                                                                                   \
 $(patsubst $(PROJDIR)/%.c, $(INTDIR)/%.o, $(CFILES))                                             \
 $(patsubst $(PROJDIR)/%.cpp, $(INTDIR)/%.o, $(CPPFILES))                                         \
 $(patsubst $(PROJDIR)/%.s, $(INTDIR)/%.o, $(ASMFILES))                                           \
 
 # Define final C/C++ flags.
-CFLAGS       := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c                        \
+CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c                         \
                $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include                \
 			   -Iinclude -std=c11 -D_DEFAULT_SOURCE -DFMT_HEADER_ONLY 
 
-CXXFLAGS     := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1                                   \
+CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1                                    \
 			   -std=c++11 -Iinclude -DFMT_HEADER_ONLY
 
-LDFLAGS      := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr                   \
+LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr                    \
                -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crtlib.o
 
 # Create the intermediate directory incase it doesn't already exist.
-_unused      := $(shell mkdir -p $(INTDIR))
+_unused     := $(shell mkdir -p $(INTDIR))
 
 # Check for Linux vs macOS and account for clang/ld path.
-UNAME_S      := $(shell uname -s)
+UNAME_S     := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-	CC       := clang
-	CCX      := clang++
-	LD       := ld.lld
-	CDIR     := linux
-	ASMLR    := as
+	CC      := clang
+	CCX     := clang++
+	LD      := ld.lld
+	CDIR    := linux
+	ASMLR   := as
 endif
 
 ifeq ($(UNAME_S),Darwin)
-	CC       := /usr/local/opt/llvm/bin/clang
-	CCX      := /usr/local/opt/llvm/bin/clang++
-	LD       := /usr/local/opt/llvm/bin/ld.lld
-	CDIR     := macos
-	ASMLR    := as
+	CC      := /usr/local/opt/llvm/bin/clang
+	CCX     := /usr/local/opt/llvm/bin/clang++
+	LD      := /usr/local/opt/llvm/bin/ld.lld
+	CDIR    := macos
+	ASMLR   := as
 endif
 
 # Define build rules.

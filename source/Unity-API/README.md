@@ -12,8 +12,8 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
     bool HasDownloadErrorOccured()
     void ResetDownloadVars()
     void CancelDownload()
+    IntPtr DownloadWebFile(string url, string savePath, bool isBackgroundDL, string displayName)
     IntPtr DownloadAsBytes(string url, out int size)
-    bool IsInternetAvailable();
     ```
     
 </details>
@@ -36,10 +36,13 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
   <summary>Click to expand</summary>
   
   - ```csharp
+       bool IsPlayStation5()
        IntPtr GetFWVersion()
        IntPtr GetConsoleType()
        int GetSystemLanguageID()
        IntPtr GetSystemLanguage()
+       int GetCPUTemperature()
+       int GetSOCTemperature()
     ```
 
 </details>
@@ -50,7 +53,7 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
 
   - ```csharp
     void SetTemperatureLimit(byte limit)
-    IntPtr GetKeyboardInput(string title = "", string initialText = "")
+    IntPtr GetKeyboardInput(string title = "Please Enter Text:", string initialText = "Default Text")
     void AlarmBuzzer(int type)
     void RunCMDAsRoot(IntPtr function, IntPtr arg, int cwdMode)
     ```
@@ -62,11 +65,13 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
   <summary>Click to expand</summary>
 
   - ```csharp
+    IntPtr GetDiskInfo(string type)
     void WriteFile(string content, string file)
     void AppendFile(string content, string file)
     void MountRootDirectories()
     void InstallLocalPackage(string uri, string name, bool deleteAfter)
     void DownloadAndInstallPKG(string url, string name, string icon)
+    bool CheckIfAppExists(string titleId)
     ```
 
 </details>
@@ -81,8 +86,9 @@ A library to import all the the functions from the [plugin](/source/plugin/) / `
     void EnterSandbox()
     void BreakFromSandbox()
     void MountInSandbox(string systemPath, string mountName)
-    void UnmountFromSandbox()
+    void UnmountFromSandbox(string mountName)
     void ExitApplication()
+    void UpdateViaHomebrewStore(string query)
     ```
 
 </details>

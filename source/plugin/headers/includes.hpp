@@ -29,4 +29,4 @@
 #include "unity.hpp"
 #include "utilities.hpp"
 
-#include "fmt/format.h" // keep below Utilities.h
+#include "fmt/format.h"

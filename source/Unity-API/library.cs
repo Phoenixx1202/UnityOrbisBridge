@@ -32,10 +32,11 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern void PrintAndLog(string message, int type, string filePath = "/data/UnityOrbisBridge.log");
         [DllImport("UnityOrbisBridge")] public static extern void TextNotify(int type, string message);
         [DllImport("UnityOrbisBridge")] public static extern void ImageNotify(string imageURL, string message);
-        
+
         #endregion
 
         #region System Information
+        [DllImport("UnityOrbisBridge")] public static extern bool IsPlayStation5(); 
         [DllImport("UnityOrbisBridge")] public static extern IntPtr GetFWVersion();
         [DllImport("UnityOrbisBridge")] public static extern IntPtr GetConsoleType();
         [DllImport("UnityOrbisBridge")] public static extern int GetSystemLanguageID();
@@ -55,9 +56,10 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern void WriteFile(string content, string filePath = "/user/data/UnityOrbisBridge.log");
         [DllImport("UnityOrbisBridge")] public static extern void AppendFile(string content, string filePath = "/user/data/UnityOrbisBridge.log");
         [DllImport("UnityOrbisBridge")] public static extern void MountRootDirectories();
-        [DllImport("UnityOrbisBridge")] public static extern void InstallLocalPackage(string uri, string name, bool deleteAfter);
-        [DllImport("UnityOrbisBridge")] public static extern void DownloadAndInstallPKG(string url, string name, string iconURL);
-        
+        [DllImport("UnityOrbisBridge")] public static extern void InstallLocalPackage(string filePath, string name, bool deleteAfter);
+        [DllImport("UnityOrbisBridge")] public static extern void InstallWebPackage(string url, string name, string iconURL);
+        [DllImport("UnityOrbisBridge")] public static extern bool CheckIfAppExists(string titleId);
+
         #endregion
 
         #region Application Operations
@@ -68,6 +70,8 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern void MountInSandbox(string systemPath, string mountName);
         [DllImport("UnityOrbisBridge")] public static extern void UnmountFromSandbox(string mountName);
         [DllImport("UnityOrbisBridge")] public static extern void ExitApplication();
+        [DllImport("UnityOrbisBridge")] public static extern void UpdateViaHomebrewStore(string query = "");
+        
         #endregion
     }
 }
