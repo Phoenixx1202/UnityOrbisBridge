@@ -153,7 +153,7 @@ jobs:
         path: source/plugin/UnityOrbisBridge.prx
 
   build-dll:
-    runs-on: windows-2019
+    runs-on: windows-latest
     needs: build-prx
 
     steps:
