@@ -44,6 +44,7 @@ extern "C"
     void MountRootDirectories();
     void InstallLocalPackage(const char *file, const char *name, bool deleteAfter);
     void InstallWebPackage(const char *url, const char *name, const char *iconURL);
+    void ExtractZipFile(const char *filePath, const char *outPath);
     bool CheckIfAppExists(const char *titleId);
 #pragma endregion
 
@@ -56,5 +57,5 @@ extern "C"
     void InitializeNativeDialogs();
     void ExitApplication();
     void UpdateViaHomebrewStore(const char *query);
-    #pragma endregion
+#pragma endregion
 }

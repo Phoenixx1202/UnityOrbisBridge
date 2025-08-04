@@ -379,14 +379,10 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
     return future.get();
 }
 
-char *FollowRedirects(const char *url)
+const char *FollowRedirects(const char *url)
 {
-    CURL *curl;
-    CURLcode curl_res;
+    CURL *curl = curl_easy_init();
     const char *finalUrl = nullptr;
-
-    curl_global_init(CURL_GLOBAL_ALL);
-    curl = curl_easy_init();
 
     if (curl)
     {
@@ -399,23 +395,16 @@ char *FollowRedirects(const char *url)
         curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
 
-        curl_res = curl_easy_perform(curl);
-        if (curl_res == CURLE_OK)
-            curl_res = curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &finalUrl);
+        if (curl_easy_perform(curl) == CURLE_OK)
+            curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &finalUrl);
 
         curl_easy_cleanup(curl);
     }
 
-    curl_global_cleanup();
+    if (finalUrl && strncmp(finalUrl, "http", 4) == 0 && strcmp(finalUrl, url) != 0)
+        return finalUrl;
 
-    if (finalUrl)
-    {
-        size_t len = strlen(finalUrl) + 1;
-        char *result = new char[len];
-        memcpy(result, finalUrl, len);
-        return result;
-    }
-
-    return nullptr;
+    return url;
 }

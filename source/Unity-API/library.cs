@@ -58,6 +58,7 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern void MountRootDirectories();
         [DllImport("UnityOrbisBridge")] public static extern void InstallLocalPackage(string filePath, string name, bool deleteAfter);
         [DllImport("UnityOrbisBridge")] public static extern void InstallWebPackage(string url, string name, string iconURL);
+        [DllImport("UnityOrbisBridge")] public static extern void ExtractZipFile(string filePath, string outPath);
         [DllImport("UnityOrbisBridge")] public static extern bool CheckIfAppExists(string titleId);
 
         #endregion

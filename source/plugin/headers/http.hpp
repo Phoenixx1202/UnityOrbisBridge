@@ -19,7 +19,7 @@ size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data);
 void BeginDownload(const char *url, const char *pathWithFile);
 static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t nmemb);
 char *DownloadAsBytesThread(const char *url, size_t *out_size);
-char *FollowRedirects(const char *url);
+const char *FollowRedirects(const char *url);
 
 extern "C"
 {

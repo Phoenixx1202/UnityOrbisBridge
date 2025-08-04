@@ -22,6 +22,8 @@
 #include <libjbc.h>
 #include <curl/curl.h>
 
+#include "miniz.h"
+
 #include "http.hpp"
 #include "orbis_defs.hpp"
 #include "pkg.hpp"

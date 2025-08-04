@@ -299,7 +299,7 @@ void InstallWebPackage(const char *url, const char *name, const char *iconURL)
     InitializeNativeDialogs();
 
     const char *redirected_url = FollowRedirects(url);
-    if (redirected_url != nullptr)
+    if (strcmp(redirected_url, url) != 0)
     {
         url = redirected_url;
         printAndLog(1, "Redirected URL: %s", url);
@@ -311,6 +311,74 @@ void InstallWebPackage(const char *url, const char *name, const char *iconURL)
         status = SendInstallRequestForPS5(url);
 
     printAndLog(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
+}
+
+void ExtractZipFile(const char *filePath, const char *outPath)
+{
+    mz_zip_archive zip_archive = {0};
+    if (!mz_zip_reader_init_file(&zip_archive, filePath, 0))
+        return;
+
+    char cleaned_out_path[1024];
+    strncpy(cleaned_out_path, outPath, sizeof(cleaned_out_path) - 1);
+    cleaned_out_path[sizeof(cleaned_out_path) - 1] = 0;
+
+    char *ext = strrchr(cleaned_out_path, '.');
+    if (ext && (strcmp(ext, ".zip") == 0 || strcmp(ext, ".pkg") == 0))
+        *ext = 0;
+
+    int file_count = (int)mz_zip_reader_get_num_files(&zip_archive);
+    for (int file_index = 0; file_index < file_count; file_index++)
+    {
+        mz_zip_archive_file_stat file_stat;
+        if (!mz_zip_reader_file_stat(&zip_archive, file_index, &file_stat))
+            continue;
+
+        if (mz_zip_reader_is_file_a_directory(&zip_archive, file_index))
+        {
+            char dir_path[1024];
+            snprintf(dir_path, sizeof(dir_path), "%s/%s", cleaned_out_path, file_stat.m_filename);
+            mkdir(dir_path, 0755);
+            continue;
+        }
+
+        char output_file_path[1024];
+        snprintf(output_file_path, sizeof(output_file_path), "%s/%s", cleaned_out_path, file_stat.m_filename);
+
+        char dir_path_buffer[1024];
+        strncpy(dir_path_buffer, output_file_path, sizeof(dir_path_buffer) - 1);
+        dir_path_buffer[sizeof(dir_path_buffer) - 1] = 0;
+
+        size_t output_path_len = strlen(output_file_path);
+        size_t base_dir_len = strlen(cleaned_out_path) + 1;
+
+        for (size_t pos = base_dir_len; pos < output_path_len; pos++)
+        {
+            if (dir_path_buffer[pos] == '/')
+            {
+                dir_path_buffer[pos] = 0;
+                if (!if_exists(dir_path_buffer))
+                    mkdir(dir_path_buffer, 0755);
+                dir_path_buffer[pos] = '/';
+            }
+        }
+
+        size_t uncompressed_size = 0;
+        void *extracted_data = mz_zip_reader_extract_to_heap(&zip_archive, file_index, &uncompressed_size, 0);
+        if (!extracted_data)
+            continue;
+
+        FILE *output_file = fopen(output_file_path, "wb");
+        if (output_file)
+        {
+            fwrite(extracted_data, 1, uncompressed_size, output_file);
+            fclose(output_file);
+        }
+
+        mz_free(extracted_data);
+    }
+
+    mz_zip_reader_end(&zip_archive);
 }
 
 bool CheckIfAppExists(const char *titleId)

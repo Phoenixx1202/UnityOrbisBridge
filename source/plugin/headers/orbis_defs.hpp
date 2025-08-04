@@ -158,7 +158,7 @@ extern "C"
     int sceAppInstUtilAppPrepareOverwritePkg(const char *pkg_path);
     int sceAppInstUtilAppGetSize(const char *title_id, uint64_t *buf);
 
-    int sceLncUtilGetAppTitleId(int appid, char* tid_out);
+    int sceLncUtilGetAppTitleId(int appid, char *tid_out);
 
     static inline void _sceCommonDialogSetMagicNumber(uint32_t *magic, const OrbisCommonDialogBaseParam *param)
     {
