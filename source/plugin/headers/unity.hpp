@@ -23,8 +23,8 @@ struct HijackerCommand
 
 extern jbc_cred g_Creds, g_RootCreds;
 
-int HJOpenConnectionforBC();
-bool HJJailbreakforBC(int &sock);
+bool PS5_Jailbreak();
+bool PS5_WhitelistJailbreak();
 
 extern "C"
 {

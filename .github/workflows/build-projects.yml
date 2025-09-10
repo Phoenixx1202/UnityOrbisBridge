@@ -83,8 +83,8 @@ jobs:
           ARTIFACT_NAME="toolchain-llvm-12"
           GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-          LATEST_RUN_URL="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/actions/workflows/$WORKFLOW_FILE/runs?per_page=1&status=completed"
-          LATEST_RUN_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$LATEST_RUN_URL" | jq -r '.workflow_runs[0].id')
+          LATEST_RUN_URL="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/actions/workflows/$WORKFLOW_FILE/runs?per_page=10&status=completed"
+          LATEST_RUN_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$LATEST_RUN_URL" | jq -r '.workflow_runs[] | select(.head_repository.owner.login == "OpenOrbis") | .id' | head -1)
 
           if [ -z "$LATEST_RUN_ID" ]; then
             echo "No workflow runs found for $WORKFLOW_FILE."

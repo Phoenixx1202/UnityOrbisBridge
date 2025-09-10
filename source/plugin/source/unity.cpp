@@ -5,33 +5,26 @@ jbc_cred g_Creds, g_RootCreds;
 static bool nativeDialogInitialized = false;
 static bool hasBrokenFromTheSandbox = false;
 
-int HJOpenConnectionforBC()
+bool PS5_Jailbreak()
 {
     struct sockaddr_in address;
     address.sin_len = sizeof(address);
     address.sin_family = AF_INET;
-    address.sin_port = htons(9028); // command server port
+    address.sin_port = htons(9028);
     memset(&address.sin_zero, 0, sizeof(address.sin_zero));
     inet_pton(AF_INET, "127.0.0.1", &address.sin_addr.s_addr);
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0)
-    {
-        return -1;
-    }
+        return false;
 
     if (connect(sock, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
+        puts("Failed to connect to daemon");
         close(sock);
-        return -1;
+        return false;
     }
 
-    return sock;
-}
-
-bool HJJailbreakforBC(int &sock)
-{
-    // send jailbreak IPC command
     HijackerCommand cmd;
     cmd.PID = getpid();
     cmd.cmd = JAILBREAK_CMD;
@@ -39,24 +32,62 @@ bool HJJailbreakforBC(int &sock)
     if (send(sock, (void *)&cmd, sizeof(cmd), MSG_NOSIGNAL) == -1)
     {
         puts("failed to send command");
+        close(sock);
         return false;
     }
-    else
-    {
-        // get ret value from daemon
-        recv(sock, reinterpret_cast<void *>(&cmd), sizeof(cmd), MSG_NOSIGNAL);
-        close(sock);
-        sock = -1;
 
-        if (cmd.ret != 0 && cmd.ret != -1337)
-        {
-            puts("Jailbreak has failed");
-            return false;
-        }
-        return true;
+    recv(sock, reinterpret_cast<void *>(&cmd), sizeof(cmd), MSG_NOSIGNAL);
+    close(sock);
+
+    if (cmd.ret != 0 && cmd.ret != -1337)
+    {
+        puts("Jailbreak has failed");
+        return false;
     }
 
-    return false;
+    return true;
+}
+
+bool PS5_WhitelistJailbreak()
+{
+    std::string json = "{\"PID\":\"" + std::to_string(getpid()) + "\"}";
+
+    remove("/download0/etahen_jailbreak");
+
+    sceKernelUsleep(500);
+
+    std::ofstream outFile("/download0/etahen_jailbreak");
+    if (!outFile.is_open())
+        return false;
+
+    outFile << json;
+    outFile.close();
+
+    showDialogMessage((char *)"Waiting for etaHEN... (MAX 30 secs)");
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    void *addr = nullptr;
+
+    while (true)
+    {
+        int handle = sceKernelLoadStartModule("libSceSystemService.sprx", 0, 0, 0, 0, 0);
+        sceKernelDlsym(handle, "sceSystemServiceLaunchApp", (void **)&addr);
+
+        if (addr != nullptr)
+            break;
+
+        auto time_now = std::chrono::high_resolution_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(time_now - start_time).count() > 30)
+        {
+            sceMsgDialogTerminate();
+            return false;
+        }
+
+        sceKernelUsleep(500);
+    }
+
+    sceMsgDialogTerminate();
+    return true;
 }
 
 bool IsFreeOfSandbox()
@@ -92,18 +123,8 @@ void BreakFromSandbox()
 
     if (IsPlayStation5())
     {
-        int ret = HJOpenConnectionforBC();
-        if (ret < 0)
-        {
-            puts("Failed to connect to daemon");
-            return;
-        }
-
-        if (!HJJailbreakforBC(ret))
-        {
-            puts("Jailbreak failed");
-            return;
-        }
+        if (!PS5_WhitelistJailbreak())
+            PS5_Jailbreak();
     }
     else
     {
@@ -144,24 +165,14 @@ void InitializeNativeDialogs()
     {
         nativeDialogInitialized = true;
 
-        bool wasAlreadyFree = false;
-
-        if (IsFreeOfSandbox())
-            wasAlreadyFree = true;
-
-        BreakFromSandbox();
-
         printAndLog(1, "Initiating native dialogs...");
 
         sceSysmoduleLoadModule(ORBIS_SYSMODULE_MESSAGE_DIALOG);
         sceCommonDialogInitialize();
         sceMsgDialogInitialize();
 
-        sceKernelLoadStartModule("/system/common/lib/libSceAppInstUtil.sprx", 0, NULL, 0, NULL, NULL);
-        sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, NULL, 0, NULL, NULL);
-
-        if (!wasAlreadyFree)
-            EnterSandbox();
+        sceKernelLoadStartModule("libSceAppInstUtil.sprx", 0, 0, 0, 0, 0);
+        sceKernelLoadStartModule("libSceBgft.sprx", 0, 0, 0, 0, 0);
     }
 }
 
@@ -234,7 +245,6 @@ void UpdateViaHomebrewStore(const char *query)
         }
     }
 
-
     if (!IsPlayStation5())
     {
         if (query != nullptr && query[0] != '\0')
@@ -262,7 +272,7 @@ void UpdateViaHomebrewStore(const char *query)
     param.app_opt = 0;
     param.crash_report = 0;
     param.LaunchAppCheck_flag = LaunchApp_SkipSystemUpdate;
-  
+
     printAndLog(0, "Attempting to launch Homebrew Store with \"%s\" query...", titleId);
 
     uint32_t res = sceLncUtilLaunchApp("NPXS39041", argv, &param);

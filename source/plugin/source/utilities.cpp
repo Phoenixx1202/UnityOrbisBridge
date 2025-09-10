@@ -326,18 +326,6 @@ bool if_exists(const char *path)
   return (stat(path, &buffer) == 0);
 }
 
-void setProgressMsgText(int prog, const char *fmt, ...)
-{
-  char buff[300] = {};
-  va_list args;
-  va_start(args, fmt);
-  vsnprintf(buff, sizeof(buff) - 1, fmt, args);
-  va_end(args);
-
-  sceMsgDialogProgressBarSetValue(0, prog);
-  sceMsgDialogProgressBarSetMsg(0, buff);
-}
-
 int initiateProgressDialog(const char *format, ...)
 {
   char buff[1024] = {};
@@ -359,5 +347,50 @@ int initiateProgressDialog(const char *format, ...)
   dialogParam.progBarParam->msg = buff;
 
   sceMsgDialogOpen(&dialogParam);
+  return 0;
+}
+
+void setProgressMsgText(int prog, const char *fmt, ...)
+{
+  char buff[300] = {};
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buff, sizeof(buff) - 1, fmt, args);
+  va_end(args);
+
+  sceMsgDialogProgressBarSetValue(0, prog);
+  sceMsgDialogProgressBarSetMsg(0, buff);
+}
+
+int showDialogMessage(char *format, ...)
+{
+  InitializeNativeDialogs();
+
+  char buff[1024];
+  memset(&buff[0], 0, 1024);
+
+  va_list args;
+  va_start(args, format);
+  vsprintf(&buff[0], format, args);
+  va_end(args);
+
+  OrbisMsgDialogButtonsParam buttonsParam;
+  OrbisMsgDialogUserMessageParam messageParam;
+  OrbisMsgDialogParam dialogParam;
+
+  OrbisMsgDialogParamInitialize(&dialogParam);
+
+  memset(&buttonsParam, 0x00, sizeof(buttonsParam));
+  memset(&messageParam, 0x00, sizeof(messageParam));
+
+  dialogParam.userMsgParam = &messageParam;
+  dialogParam.mode = ORBIS_MSG_DIALOG_MODE_USER_MSG;
+
+  messageParam.buttonType = ORBIS_MSG_DIALOG_BUTTON_TYPE_WAIT;
+
+  messageParam.msg = buff;
+
+  sceMsgDialogOpen(&dialogParam);
+
   return 0;
 }

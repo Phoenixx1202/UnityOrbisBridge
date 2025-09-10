@@ -18,3 +18,7 @@ int df(std::string mountPoint, long &percentUsed, double &totalSpace, double &us
 void build_iovec(struct iovec **iov, int *iovlen, const char *name, const void *val, size_t len);
 void mount_large_fs(const char *device, const char *mountpoint, const char *fstype, const char *mode, unsigned int flags);
 bool if_exists(const char *path);
+
+int initiateProgressDialog(const char *format, ...);
+void setProgressMsgText(int prog, const char *fmt, ...);
+int showDialogMessage(char *format, ...);

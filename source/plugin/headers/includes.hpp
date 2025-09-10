@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <future>
 #include <arpa/inet.h>
+#include <fstream>
 
 #include <orbis/CommonDialog.h>
 #include <orbis/ImeDialog.h>
