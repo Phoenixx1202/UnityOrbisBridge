@@ -8,7 +8,7 @@ extern uint16_t inputImeTitle[512];
 extern "C" int SYSCALL(long num, ...);
 
 void printToConsole(int type, const char *format, ...);
-void printAndLog(int type, const char *message, ...);
+void printAndLogFmt(int type, const char *message, ...);
 
 int convert_to_utf16(const char *utf8, uint16_t *utf16, uint32_t available);
 int convert_from_utf16(const uint16_t *utf16, char *utf8, uint32_t size);

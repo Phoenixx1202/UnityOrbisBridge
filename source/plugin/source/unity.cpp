@@ -165,7 +165,7 @@ void InitializeNativeDialogs()
     {
         nativeDialogInitialized = true;
 
-        printAndLog(1, "Initiating native dialogs...");
+        printAndLogFmt(0, "Initiating native dialogs...");
 
         sceSysmoduleLoadModule(ORBIS_SYSMODULE_MESSAGE_DIALOG);
         sceCommonDialogInitialize();
@@ -197,13 +197,13 @@ void UpdateViaHomebrewStore(const char *query)
 
     if (!CheckIfAppExists("NPXS39041"))
     {
-        printAndLog(0, "The Homebrew Store currently isnt installed...");
+        printAndLogFmt(1, "The Homebrew Store currently isnt installed...");
 
         const char *storeUrl = IsPlayStation5()
                                    ? "https://pkg-zone.com/update/Store-R2-PS5.pkg"
                                    : "https://pkg-zone.com/update/Store-R2.pkg";
 
-        printAndLog(0, "Attempting to download the Homebrew Store...");
+        printAndLogFmt(1, "Attempting to download the Homebrew Store...");
 
         DownloadWebFile(storeUrl, "/user/app/store_download.pkg", false, "Homebrew Store");
 
@@ -212,7 +212,7 @@ void UpdateViaHomebrewStore(const char *query)
 
         if (hasDownloadCompleted && !downloadErrorOccured)
         {
-            printAndLog(0, "Now installing the Homebrew Store...");
+            printAndLogFmt(1, "Now installing the Homebrew Store...");
 
             InstallLocalPackage("/user/app/store_download.pkg", "Homebrew Store", true);
 
@@ -226,20 +226,20 @@ void UpdateViaHomebrewStore(const char *query)
         }
         else
         {
-            printAndLog(0, "Failed to download the Homebrew Store!");
+            printAndLogFmt(3, "Failed to download the Homebrew Store!");
 
             return;
         }
     }
     else
-        printAndLog(0, "Homebrew Store is installed, launching...");
+        printAndLogFmt(1, "Homebrew Store is installed, launching...");
 
     if (!IsPlayStation5())
     {
         int storeId = sceSystemServiceGetAppIdOfMiniApp();
         if ((storeId & ~0xFFFFFF) == 0x60000000 && if_exists("/mnt/sandbox/pfsmnt/NPXS39041-app0/"))
         {
-            printAndLog(0, "Closing Homebrew Store for re-launch!...");
+            printAndLogFmt(0, "Closing Homebrew Store for re-launch!...");
 
             sceSystemServiceKillApp(storeId, -1, 0, 0);
         }
@@ -258,7 +258,7 @@ void UpdateViaHomebrewStore(const char *query)
             titleId = strdup(query);
         else
         {
-            printAndLog(0, "No query provided to launch Homebrew Store...");
+            printAndLogFmt(1, "No query provided to launch Homebrew Store...");
 
             return;
         }
@@ -273,14 +273,14 @@ void UpdateViaHomebrewStore(const char *query)
     param.crash_report = 0;
     param.LaunchAppCheck_flag = LaunchApp_SkipSystemUpdate;
 
-    printAndLog(0, "Attempting to launch Homebrew Store with \"%s\" query...", titleId);
+    printAndLogFmt(0, "Attempting to launch Homebrew Store with \"%s\" query...", titleId);
 
     uint32_t res = sceLncUtilLaunchApp("NPXS39041", argv, &param);
     if ((res & 0x80000000) && res != 2157182993)
-        printAndLog(0, "App launch failed with error code: %u", res);
+        printAndLogFmt(3, "App launch failed with error code: %u", res);
 
     if (res == 2157182993)
-        printAndLog(0, "Homebrew Store has launched successfully!");
+        printAndLogFmt(1, "Homebrew Store has launched successfully!");
 
     if (titleId)
         free(titleId);

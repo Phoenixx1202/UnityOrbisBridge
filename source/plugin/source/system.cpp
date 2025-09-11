@@ -287,30 +287,33 @@ void InstallLocalPackage(const char *file, const char *name, bool deleteAfter)
     else
         status = SendInstallRequestForPS5(file);
 
-    printAndLog(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
+    printAndLogFmt(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
 void InstallWebPackage(const char *url, const char *name, const char *iconURL)
 {
-    bool status = false;
-
     PrintToConsole("Starting package installation...", 0);
-
     InitializeNativeDialogs();
 
-    const char *redirected_url = FollowRedirects(url);
-    if (strcmp(redirected_url, url) != 0)
+    const char *redirected = FollowRedirects(url);
+    bool status = false;
+
+    if (redirected != url)
     {
-        url = redirected_url;
-        printAndLog(1, "Redirected URL: %s", url);
+        printAndLogFmt(0, "Redirected URL: %s", redirected);
+        url = redirected;
     }
 
-    if (!IsPlayStation5())
-        status = installWebPKG(url, name, iconURL) != 0;
-    else
-        status = SendInstallRequestForPS5(url);
+    status = !IsPlayStation5()
+                 ? installWebPKG(url, name, iconURL) != 0
+                 : SendInstallRequestForPS5(url);
 
-    printAndLog(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
+    printAndLogFmt(status ? 1 : 3,
+                status ? "Package installation succeeded."
+                       : "Package installation has failed.");
+
+    if (redirected != url)
+        free((void *)redirected);
 }
 
 void ExtractZipFile(const char *filePath, const char *outPath)

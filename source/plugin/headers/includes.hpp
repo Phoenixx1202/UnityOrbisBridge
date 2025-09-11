@@ -32,4 +32,3 @@
 #include "unity.hpp"
 #include "utilities.hpp"
 
-#include "fmt/format.h"

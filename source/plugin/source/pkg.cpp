@@ -6,7 +6,7 @@ static struct bgft_init_params s_bgft_init_params;
 
 int PKG_ERROR(const char *name, int ret)
 {
-    printAndLog(3, "%s error: %x", name, ret);
+    printAndLogFmt(3, "%s error: %x", name, ret);
     return ret;
 }
 
@@ -17,12 +17,12 @@ bool app_inst_util_init(void)
     if (sceAppInst_done)
         goto done;
 
-    printAndLog(1, "Initializing AppInstUtil...");
+    printAndLogFmt(0, "Initializing AppInstUtil...");
 
     ret = sceAppInstUtilInitialize();
     if (ret)
     {
-        printAndLog(3, "sceAppInstUtilInitialize failed: 0x%08X", ret);
+        printAndLogFmt(4, "sceAppInstUtilInitialize failed: 0x%08X", ret);
         goto err;
     }
 
@@ -45,7 +45,7 @@ void app_inst_util_fini(void)
 
     ret = sceAppInstUtilTerminate();
     if (ret)
-        printAndLog(3, "sceAppInstUtilTerminate failed: 0x%08X", ret);
+        printAndLogFmt(4, "sceAppInstUtilTerminate failed: 0x%08X", ret);
 
     sceAppInst_done = false;
 }
@@ -63,17 +63,17 @@ bool bgft_init(void)
 
     if (!s_bgft_init_params.heap)
     {
-        printAndLog(3, "No memory for BGFT heap.");
+        printAndLogFmt(4, "No memory for BGFT heap.");
         goto err;
     }
 
     memset(s_bgft_init_params.heap, 0, s_bgft_init_params.heapSize);
 
-    printAndLog(1, "Initializing BGFT...");
+    printAndLogFmt(0, "Initializing BGFT...");
     ret = sceBgftServiceInit(&s_bgft_init_params);
     if (ret)
     {
-        printAndLog(3, "sceBgftInitialize failed: 0x%08X", ret);
+        printAndLogFmt(4, "sceBgftInitialize failed: 0x%08X", ret);
         goto err_bgft_heap_free;
     }
 
@@ -105,7 +105,7 @@ void bgft_fini(void)
 
     ret = sceBgftServiceTerm();
     if (ret)
-        printAndLog(3, "sceBgftServiceTerm failed: 0x%08X", ret);
+        printAndLogFmt(4, "sceBgftServiceTerm failed: 0x%08X", ret);
 
     if (s_bgft_init_params.heap)
     {
@@ -122,9 +122,9 @@ void *displayDownloadProgress(void *arguments)
     struct install_args *args = (install_args *)arguments;
     SceBgftTaskProgress progress_info;
 
-    std::string msg = fmt::format("Installing... [{}] {}", args->title_id, args->fname);
+    std::string msg = std::string("Installing... [") + args->title_id + "] " + args->fname;
 
-    printAndLog(1, msg.c_str());
+    printAndLogFmt(1, msg.c_str());
 
     initiateProgressDialog(args->fname);
 
@@ -151,7 +151,7 @@ void *displayDownloadProgress(void *arguments)
             unlink(args->path);
     }
     else
-        printAndLog(3, "Installation of %s has failed with code: 0x%x", args->title_id, progress_info.error_result);
+        printAndLogFmt(4, "Installation of %s has failed with code: 0x%x", args->title_id, progress_info.error_result);
 
     sceMsgDialogTerminate();
 
@@ -171,13 +171,13 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
     int is_app, ret = -1;
     int task_id = -1;
 
-    printAndLog(1, "Checking if file exists: %s", fullpath);
+    printAndLogFmt(0, "Checking if file exists: %s", fullpath);
     if (if_exists(fullpath))
     {
-        printAndLog(1, "File found. Proceeding with installation.");
+        printAndLogFmt(0, "File found. Proceeding with installation.");
         if (sceAppInst_done)
         {
-            printAndLog(1, "Initializing AppInstUtil...");
+            printAndLogFmt(0, "Initializing AppInstUtil...");
             if (!app_inst_util_init())
                 return PKG_ERROR("AppInstUtil initialization failed", ret);
         }
@@ -185,7 +185,7 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
         if (!bgft_init())
             return PKG_ERROR("BGFT initialization failed", ret);
 
-        printAndLog(1, "Retrieving Title ID from package...");
+        printAndLogFmt(0, "Retrieving Title ID from package...");
         ret = sceAppInstUtilGetTitleIdFromPkg(fullpath, title_id, &is_app);
         if (ret)
             return PKG_ERROR("sceAppInstUtilGetTitleIdFromPkg failed", ret);
@@ -202,11 +202,11 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
         download_params.slot = 0;
 
     retry:
-        printAndLog(1, "Registering download task...");
+        printAndLogFmt(0, "Registering download task...");
         ret = sceBgftServiceIntDownloadRegisterTaskByStorageEx(&download_params, &task_id);
         if (ret == 0x80990088 || ret == 0x80990015)
         {
-            printAndLog(2, "Conflicting installation detected. Uninstalling existing title: %s", title_id);
+            printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title: %s", title_id);
             ret = sceAppInstUtilAppUnInstall(&title_id[0]);
             if (ret != 0)
                 return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
@@ -221,11 +221,11 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
     }
     else
     {
-        printAndLog(3, "Failed to open file: %s", fullpath);
+        printAndLogFmt(3, "Failed to open file: %s", fullpath);
         return ret;
     }
 
-    printAndLog(1, "Allocating memory for install arguments...");
+    printAndLogFmt(0, "Allocating memory for install arguments...");
     struct install_args *args = (struct install_args *)malloc(sizeof(struct install_args));
     if (!args)
     {
@@ -239,7 +239,7 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
     args->is_thread = false;
     args->delete_pkg = deleteAfter;
 
-    printAndLog(1, "Starting download progress display thread...");
+    printAndLogFmt(0, "Starting download progress display thread...");
     displayDownloadProgress((void *)args);
 
     return 0;
@@ -264,18 +264,18 @@ uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
     download_params.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
 
 retry:
-    printAndLog(1, "Registering web download task...");
+    printAndLogFmt(0, "Registering web download task...");
     ret = sceBgftServiceIntDebugDownloadRegisterPkg(&download_params, &task_id);
     if (ret == 0x80F00633)
     {
-        printAndLog(2, "Incorrect NP environment setting detected. Prompting user to change it.");
+        printAndLogFmt(2, "Incorrect NP environment setting detected. Prompting user to change it.");
         TextNotify(0, "Please change NP Environment\nin \"Debug Settings\" from\n \"NP\" to \"SP-INT\".");
         ret = 0;
     }
 
     if (ret == 0x80990088 || ret == 0x80990015)
     {
-        printAndLog(2, "Conflicting installation detected. Uninstalling existing title.");
+        printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title.");
         ret = sceAppInstUtilAppUnInstall(title_id);
         if (ret != 0)
             return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
@@ -285,7 +285,7 @@ retry:
     if (ret)
         return PKG_ERROR("sceBgftServiceIntDebugDownloadRegisterPkg failed", ret);
 
-    printAndLog(1, "Starting web download task: %d", task_id);
+    printAndLogFmt(0, "Starting web download task: %d", task_id);
     ret = sceBgftServiceDownloadStartTask(task_id);
     if (ret)
         return PKG_ERROR("sceBgftDownloadStartTask failed", ret);
@@ -298,7 +298,7 @@ bool SendInstallRequestForPS5(const char *url)
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0)
     {
-        printAndLog(0, "Socket creation failed");
+        printAndLogFmt(3, "Socket server failed to creation for DPI.");
         return false;
     }
 
@@ -309,17 +309,17 @@ bool SendInstallRequestForPS5(const char *url)
 
     if (connect(sock, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
-        printAndLog(0, "Connection failed");
+        printAndLogFmt(3, "Failed to connect to the DPI server.");
         close(sock);
         return false;
     }
 
     std::string request = std::string("{ \"url\" : \"") + url + "\" }";
-    printAndLog(0, "Sending install request: %s\n", request.c_str());
+    printAndLogFmt(0, "Sending install request: %s\n", request.c_str());
 
     if (send(sock, request.c_str(), request.size(), 0) < 0)
     {
-        printAndLog(0, "Failed to send install request");
+        printAndLogFmt(3, "Failed to send install request to DPI.");
         close(sock);
         return false;
     }
@@ -330,12 +330,12 @@ bool SendInstallRequestForPS5(const char *url)
 
     if (bytesRead <= 0)
     {
-        printAndLog(0, "No response or failed to read response");
+        printAndLogFmt(3, "No response or failed to read response from DPI.");
         return false;
     }
 
     buffer[bytesRead] = '\0';
-    printAndLog(0, "Response: %s", buffer);
+    printAndLogFmt(0, "Response: %s", buffer);
 
     return std::string(buffer).find("\"res\" : \"0\"") != std::string::npos;
 }

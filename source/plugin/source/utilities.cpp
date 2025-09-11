@@ -28,7 +28,7 @@ void printToConsole(int type, const char *message, ...)
   sceKernelDebugOutText(0, (logMessage + "\n").c_str());
 }
 
-void printAndLog(int type, const char *message, ...)
+void printAndLogFmt(int type, const char *message, ...)
 {
   if (type < 0 || type > 4)
     type = 0;

@@ -104,7 +104,7 @@ size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data)
     std::string header(static_cast<char *>(ptr), size * nmemb);
     if (header.find("Content-Disposition: attachment") != std::string::npos)
     {
-        PrintAndLog("Server is sending the file as an attachment.", 1);
+        printAndLogFmt(0, "Server is sending the file as an attachment.");
         size_t filenamePos = header.find("filename=");
         if (filenamePos != std::string::npos)
         {
@@ -124,7 +124,7 @@ size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data)
                     filename = header.substr(start, end - start);
                 }
                 if (!filename.empty())
-                    PrintAndLog(("Filename from header: " + filename).c_str(), 1);
+                    printAndLogFmt(0, ("Filename from header: " + filename).c_str());
             }
         }
     }
@@ -137,7 +137,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
 
     if (!pathWithFile)
     {
-        PrintAndLog("Download path is null.", 3);
+        printAndLogFmt(3, "Download path is null.");
         downloadErrorOccured = true;
         return;
     }
@@ -158,7 +158,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
         }
         else
         {
-            PrintAndLog("Failed to open resume file.", 3);
+            printAndLogFmt(3, "Failed to open resume file.");
 
             downloadErrorOccured = true;
 
@@ -170,7 +170,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
         file = fopen(resumePath.c_str(), "w+b");
         if (!file)
         {
-            PrintAndLog("Failed to open file for writing.", 3);
+            printAndLogFmt(3, "Failed to open file for writing.");
 
             downloadErrorOccured = true;
 
@@ -181,7 +181,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
     filePath = strdup(resumePath.c_str());
     if (!filePath)
     {
-        PrintAndLog("Memory allocation failed for filePath.", 3);
+        printAndLogFmt(4, "Memory allocation failed for filePath.");
 
         fclose(file);
 
@@ -196,7 +196,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
     curl = curl_easy_init();
     if (!curl)
     {
-        PrintAndLog("CURL failed to initialize.", 3);
+        printAndLogFmt(4, "CURL failed to initialize.");
 
         fclose(file);
         fileClosed = true;
@@ -232,30 +232,28 @@ void BeginDownload(const char *url, const char *pathWithFile)
     CURLcode result = curl_easy_perform(curl);
     if (result == CURLE_OK)
     {
-        PrintAndLog(("The download (" + std::string(url) +
-                     ") completed and has been saved to \"" + finalPath + "\".")
-                        .c_str(),
-                    1);
+        printAndLogFmt(1, ("The download (" + std::string(url) +
+                           ") completed and has been saved to \"" + finalPath + "\".")
+                              .c_str());
 
         fclose(file);
         fileClosed = true;
 
         if (rename(resumePath.c_str(), finalPath.c_str()) != 0)
-            PrintAndLog("Failed to rename resume file to final filename.", 3);
+            printAndLogFmt(3, "Failed to rename resume file to final filename.");
     }
     else if (result == CURLE_ABORTED_BY_CALLBACK)
     {
-        PrintAndLog("Download cancelled; partial file saved as resume file.", 1);
+        printAndLogFmt(1, "Download cancelled; partial file saved as resume file.");
 
         fclose(file);
         fileClosed = true;
     }
     else
     {
-        PrintAndLog(("Download failed with error: " +
-                     std::string(curl_easy_strerror(result)))
-                        .c_str(),
-                    3);
+        printAndLogFmt(3, ("Download failed with error: " +
+                           std::string(curl_easy_strerror(result)))
+                              .c_str());
 
         downloadErrorOccured = true;
 
@@ -285,7 +283,7 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
 
     if (!url || !pathWithFile)
     {
-        PrintAndLog("Invalid URL or file path.", 3);
+        printAndLogFmt(3, "Invalid URL or file path.");
         return;
     }
 
@@ -302,8 +300,8 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
         downloadThread.detach();
     }
 
-    PrintAndLog(bgDL ? "Background download has begun." : "Foreground download has begun.", 1);
-    PrintAndLog(("Downloading file and writing to: " + std::string(pathWithFile)).c_str(), 1);
+    printAndLogFmt(1, bgDL ? "Background download has begun." : "Foreground download has begun.");
+    printAndLogFmt(0, ("Downloading file and writing to: " + std::string(pathWithFile)).c_str());
 }
 
 static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t count)
@@ -312,7 +310,7 @@ static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t count)
     char *newBuffer = static_cast<char *>(realloc(dataBuffer, bufferSize + totalSize + 1));
     if (!newBuffer)
     {
-        printAndLog(3, "Memory allocation failed during download.");
+        printAndLogFmt(4, "Memory allocation failed during download.");
 
         return 0;
     }
@@ -352,7 +350,7 @@ char *DownloadAsBytesThread(const char *url, size_t *out_size)
     CURLcode result = curl_easy_perform(curl);
     if (result != CURLE_OK)
     {
-        printAndLog(3, "Download failed with error: %s", curl_easy_strerror(result));
+        printAndLogFmt(3, "Download failed with error: %s", curl_easy_strerror(result));
 
         free(dataBuffer);
         dataBuffer = NULL;
@@ -382,7 +380,7 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
 const char *FollowRedirects(const char *url)
 {
     CURL *curl = curl_easy_init();
-    const char *finalUrl = nullptr;
+    char *result = nullptr;
 
     if (curl)
     {
@@ -398,13 +396,17 @@ const char *FollowRedirects(const char *url)
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
 
         if (curl_easy_perform(curl) == CURLE_OK)
-            curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &finalUrl);
+        {
+            char *effectiveUrl = nullptr;
+            if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effectiveUrl) == CURLE_OK && effectiveUrl)
+                result = strdup(effectiveUrl);
+        }
 
         curl_easy_cleanup(curl);
     }
 
-    if (finalUrl && strncmp(finalUrl, "http", 4) == 0 && strcmp(finalUrl, url) != 0)
-        return finalUrl;
+    if (!result)
+        result = strdup(url);
 
-    return url;
+    return result;
 }
