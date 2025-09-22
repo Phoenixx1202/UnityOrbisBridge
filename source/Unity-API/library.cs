@@ -53,8 +53,8 @@ namespace UnityOrbisBridge
         #endregion
 
         #region Filesystem Operations
-        [DllImport("UnityOrbisBridge")] public static extern void WriteFile(string content, string filePath = "/user/data/UnityOrbisBridge.log");
-        [DllImport("UnityOrbisBridge")] public static extern void AppendFile(string content, string filePath = "/user/data/UnityOrbisBridge.log");
+        [DllImport("UnityOrbisBridge")] public static extern void WriteFile(string content, string filePath = "/data/UnityOrbisBridge.log");
+        [DllImport("UnityOrbisBridge")] public static extern void AppendFile(string content, string filePath = "/data/UnityOrbisBridge.log");
         [DllImport("UnityOrbisBridge")] public static extern void MountRootDirectories();
         [DllImport("UnityOrbisBridge")] public static extern void InstallLocalPackage(string filePath, string name, bool deleteAfter);
         [DllImport("UnityOrbisBridge")] public static extern void InstallWebPackage(string url, string name, string iconURL);

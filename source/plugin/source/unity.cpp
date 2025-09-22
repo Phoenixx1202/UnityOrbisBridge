@@ -165,14 +165,14 @@ void InitializeNativeDialogs()
     {
         nativeDialogInitialized = true;
 
-        printAndLogFmt(0, "Initiating native dialogs...");
+        printAndLogFmt(0, "Initiating native message dialogs...");
 
         sceSysmoduleLoadModule(ORBIS_SYSMODULE_MESSAGE_DIALOG);
         sceCommonDialogInitialize();
         sceMsgDialogInitialize();
 
-        sceKernelLoadStartModule("libSceAppInstUtil.sprx", 0, 0, 0, 0, 0);
-        sceKernelLoadStartModule("libSceBgft.sprx", 0, 0, 0, 0, 0);
+        sceKernelLoadStartModule("/system/common/lib/libSceAppInstUtil.sprx", 0, 0, 0, 0, 0);
+        sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, 0, 0, 0, 0);
     }
 }
 
