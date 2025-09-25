@@ -243,34 +243,6 @@ bool getKeyboardInput(const char *Title, const char *initialTextBuffer, char *ou
   return false;
 }
 
-int df(std::string mountPoint, long &percentUsed, double &totalSpace, double &usedSpace, double &freeSpace)
-{
-  struct statfs s;
-  long blocks_used = 0;
-  long blocks_percent_used = 0;
-
-  if (SYSCALL(396, mountPoint.c_str(), &s) != 0)
-  {
-    PrintToConsole(("df cannot open " + mountPoint).c_str(), 2);
-
-    return 0;
-  }
-
-  if (s.f_blocks > 0)
-  {
-    blocks_used = s.f_blocks - s.f_bfree;
-    blocks_percent_used = (long)(blocks_used * 100.0 / (blocks_used + s.f_bavail) + 0.5);
-  }
-
-  totalSpace = s.f_blocks * (s.f_bsize / 1024.0 / 1024.0 / 1024.0);
-  freeSpace = s.f_bavail * (s.f_bsize / 1024.0 / 1024.0 / 1024.0);
-  usedSpace = totalSpace - freeSpace;
-
-  percentUsed = blocks_percent_used;
-
-  return blocks_percent_used;
-}
-
 void build_iovec(struct iovec **iov, int *iovlen, const char *name, const void *val, size_t len)
 {
   int i = *iovlen;

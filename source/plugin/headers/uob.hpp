@@ -37,13 +37,13 @@ extern "C"
 #pragma endregion
 
 #pragma region Filesystem Operations
-    const char *GetDiskInfo(const char *infoType);
+    const char *GetDiskInfo(const char *infoType, const char *mountPoint);
     void CreateDirectory(const char *dirPath);
     void WriteFile(const char *content, const char *file);
     void AppendFile(const char *content, const char *file);
     void MountRootDirectories();
-    void InstallLocalPackage(const char *file, const char *name, bool deleteAfter);
-    void InstallWebPackage(const char *url, const char *name, const char *iconURL);
+    void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter);
+    void InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURL);
     void ExtractZipFile(const char *filePath, const char *outPath);
     bool CheckIfAppExists(const char *titleId);
 #pragma endregion

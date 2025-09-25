@@ -164,52 +164,65 @@ void RunCMDAsRoot(void (*function)(void *arg), void *arg, int cwd_mode)
 #pragma endregion
 
 #pragma region Filesystem Operations
-const char *GetDiskInfo(const char *infoType)
+const char *GetDiskInfo(const char *infoType, const char *mountPoint)
 {
     static std::string result;
+    if (!mountPoint || !*mountPoint)
+        mountPoint = "/user";
 
-    long percentUsed = -1;
-    double totalSpace = 0;
-    double usedSpace = 0;
-    double freeSpace = 0;
+    static int (*_fstatfs)(int fd, struct statfs *buf) = nullptr;
+    int libKernel = sceKernelLoadStartModule("/system/common/lib/libkernel.sprx", 0, 0, 0, 0, 0);
+    sceKernelDlsym(libKernel, "_fstatfs", (void **)&_fstatfs);
 
-    df("/user", percentUsed, totalSpace, usedSpace, freeSpace);
+    if (!_fstatfs)
+        return "N/A";
 
-    auto formatSize = [](double size) -> std::string
+    int fd = open(mountPoint, O_RDONLY);
+    if (fd < 0)
+        return "N/A";
+
+    struct statfs s;
+    if (_fstatfs(fd, &s) != 0)
     {
-        std::string unit = "GB";
-        double displaySize = size;
+        close(fd);
+        return "N/A";
+    }
 
-        if (size >= 1024.0)
+    close(fd);
+
+    uint64_t totalBytes = s.f_blocks * s.f_bsize;
+    uint64_t freeBytes = s.f_bavail * s.f_bsize;
+    uint64_t usedBytes = totalBytes - freeBytes;
+    long percentUsed = static_cast<long>(usedBytes * 100.0 / totalBytes + 0.5);
+
+    auto formatSize = [](uint64_t bytes) -> std::string
+    {
+        const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+        double size = static_cast<double>(bytes);
+        int unit = 0;
+        while (size >= 1024.0 && unit < 4)
         {
-            unit = "TB";
-            displaySize = size / 1024.0;
-        }
-        else if (size < 1.0)
-        {
-            unit = "MB";
-            displaySize = size * 1024.0;
+            size /= 1024.0;
+            unit++;
         }
 
-        int integerPart = static_cast<int>(displaySize);
-        double fractionalPart = displaySize - integerPart;
-        int fractionalPartRounded = static_cast<int>(
-            fractionalPart * 100.0 + 0.5);
-        std::string result = std::to_string(integerPart) + "." +
-                             (fractionalPartRounded < 10 ? "0" : "") +
-                             std::to_string(fractionalPartRounded) + " " + unit;
+        size = ((int64_t)(size * 100.0 + 0.5)) / 100.0;
 
-        return result;
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.2f %s", size, units[unit]);
+        return std::string(buf);
     };
 
     if (strcmp(infoType, "percentUsed") == 0)
         result = std::to_string(percentUsed) + "%";
     else if (strcmp(infoType, "totalSpace") == 0)
-        result = formatSize(totalSpace);
+        result = formatSize(totalBytes);
     else if (strcmp(infoType, "usedSpace") == 0)
-        result = formatSize(usedSpace);
+        result = formatSize(usedBytes);
     else if (strcmp(infoType, "freeSpace") == 0)
-        result = formatSize(freeSpace);
+        result = formatSize(freeBytes);
+    else
+        result = "N/A";
 
     return result.c_str();
 }
@@ -274,7 +287,7 @@ void MountRootDirectories()
         mount_large_fs(devices[i], mount_points[i], "exfatfs", "511", 0x0000000000010000ULL);
 }
 
-void InstallLocalPackage(const char *file, const char *name, bool deleteAfter)
+void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter)
 {
     bool status = false;
 
@@ -283,14 +296,14 @@ void InstallLocalPackage(const char *file, const char *name, bool deleteAfter)
     InitializeNativeDialogs();
 
     if (!IsPlayStation5())
-        status = installPKG(file, name, deleteAfter) == 0;
+        status = installPKG(file, name, iconURI, deleteAfter) == 0;
     else
         status = SendInstallRequestForPS5(file);
 
     printAndLogFmt(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
-void InstallWebPackage(const char *url, const char *name, const char *iconURL)
+void InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURI)
 {
     PrintToConsole("Starting package installation...", 0);
     InitializeNativeDialogs();
@@ -305,12 +318,12 @@ void InstallWebPackage(const char *url, const char *name, const char *iconURL)
     }
 
     status = !IsPlayStation5()
-                 ? installWebPKG(url, name, iconURL) != 0
+                 ? installWebPKG(url, name, titleId, iconURI) != 0
                  : SendInstallRequestForPS5(url);
 
     printAndLogFmt(status ? 1 : 3,
-                status ? "Package installation succeeded."
-                       : "Package installation has failed.");
+                   status ? "Package installation succeeded."
+                          : "Package installation has failed.");
 
     if (redirected != url)
         free((void *)redirected);

@@ -16,7 +16,7 @@ int initiateProgressDialog(const char *format, ...);
 void setProgressMsgText(int prog, const char *fmt, ...);
 void *displayDownloadProgress(void *argument);
 
-uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter = false);
-uint32_t installWebPKG(const char *url, const char *name, const char *icon_url);
+uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter = false);
+uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI);
 
 bool SendInstallRequestForPS5(const char *url);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -86,7 +86,7 @@ public static class UOBWrapper
                 {
                     case LogType.Assert: return 0; // DEBUG
                     case LogType.Log: return 1;
-                    case LogType.Warning: return 2; 
+                    case LogType.Warning: return 2;
                     case LogType.Error: return 3;
                     case LogType.Exception: return 4; // CRITIAL
                     default: return (int)type;
@@ -196,30 +196,31 @@ public static class UOBWrapper
         UOB.Temperature temperature = UOB.Temperature.CPU, float min = 55f, float max = 70f)
         => Temperature.Update(textObject, temperature, cold, normal, hot, min, max);
 
-    public static void UpdateDiskInfo(Text textObject, UOB.DiskInfo info)
+    public static void UpdateDiskInfo(Text textObject, UOB.DiskInfo info, string mountPoint = "/user")
     {
         if (Application.platform != RuntimePlatform.PS4 || !UOB.IsFreeOfSandbox()) return; // move the IsFreeOfSandbox() check to the API itself
 
         var diskInfo = new Dictionary<UOB.DiskInfo, string>
         {
-            { UOB.DiskInfo.Used, UOB.GetDiskInfo(UOB.DiskInfo.Used) },
-            { UOB.DiskInfo.Free, UOB.GetDiskInfo(UOB.DiskInfo.Free) },
-            { UOB.DiskInfo.Total, UOB.GetDiskInfo(UOB.DiskInfo.Total) },
-            { UOB.DiskInfo.Percent, UOB.GetDiskInfo(UOB.DiskInfo.Percent) }
+            { UOB.DiskInfo.Used, UOB.GetDiskInfo(UOB.DiskInfo.Used, mountPoint) },
+            { UOB.DiskInfo.Free, UOB.GetDiskInfo(UOB.DiskInfo.Free, mountPoint) },
+            { UOB.DiskInfo.Total, UOB.GetDiskInfo(UOB.DiskInfo.Total, mountPoint) },
+            { UOB.DiskInfo.Percent, UOB.GetDiskInfo(UOB.DiskInfo.Percent, mountPoint) }
         };
 
         string currentInfo = diskInfo[info];
 
-        if (currentInfo == UOB.lastDiskInfo[info]) return;
+        if (currentInfo == UOB.lastDiskInfo[info])
+            return;
 
         UOB.lastDiskInfo[info] = currentInfo;
 
-        string text = UOB.GetDiskInfoAsFormattedText(info, diskInfo);
+        string text = UOB.GetDiskInfoAsFormattedText(info, mountPoint);
 
         if (textObject != null)
             textObject.text = text;
         else
-            Print("UpdateDiskInfo(Text, UOB.DiskInfo) returned due to \"textObject\" being \"null\".");
+            Print("UpdateDiskInfo(...) returned due to \"textObject\" being \"null\".");
     }
 
     public static async Task<string> DownloadAsBytes(string url)
@@ -262,7 +263,6 @@ public static class UOBWrapper
                     return null;
                 }
 
-                // Handle redirects manually
                 if (request.responseCode >= 300 && request.responseCode < 400)
                 {
                     string newUrl = request.GetResponseHeader("Location");

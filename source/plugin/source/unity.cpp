@@ -214,7 +214,7 @@ void UpdateViaHomebrewStore(const char *query)
         {
             printAndLogFmt(1, "Now installing the Homebrew Store...");
 
-            InstallLocalPackage("/user/app/store_download.pkg", "Homebrew Store", true);
+            InstallLocalPackage("/user/app/store_download.pkg", "Homebrew Store", "", true);
 
             if (IsPlayStation5())
             {

@@ -164,12 +164,12 @@ void *displayDownloadProgress(void *arguments)
     return NULL;
 }
 
-uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
+uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter)
 {
-    // add support for custom images here, idk why i didnt in the first place
     char title_id[16];
     int is_app, ret = -1;
     int task_id = -1;
+    uint64_t pkg_size;
 
     printAndLogFmt(0, "Checking if file exists: %s", fullpath);
     if (if_exists(fullpath))
@@ -190,15 +190,29 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
         if (ret)
             return PKG_ERROR("sceAppInstUtilGetTitleIdFromPkg failed", ret);
 
+        if (!iconURI || !*iconURI)
+            iconURI = "https://t4.ftcdn.net/jpg/01/25/36/71/360_F_125367167_JnrCHTqtZhAbWS3doG4tt631usPHiPnr.jpg";
+
+        ret = sceAppInstUtilAppGetSize(title_id, &pkg_size);
+        if (ret)
+            return PKG_ERROR("sceAppInstUtilAppGetSize failed", ret);
+
         struct bgft_download_param_ex download_params;
         memset(&download_params, 0, sizeof(download_params));
+        download_params.param.user_id = 0;
         download_params.param.entitlement_type = 5;
         download_params.param.id = "";
         download_params.param.content_url = fullpath;
+        download_params.param.content_ex_url = "";
         download_params.param.content_name = name;
-        download_params.param.icon_path = "https://t4.ftcdn.net/jpg/01/25/36/71/360_F_125367167_JnrCHTqtZhAbWS3doG4tt631usPHiPnr.jpg";
-        download_params.param.playgo_scenario_id = "0";
+        download_params.param.icon_path = iconURI;
+        download_params.param.sku_id = "";
         download_params.param.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
+        download_params.param.playgo_scenario_id = "0";
+        download_params.param.release_date = "";
+        download_params.param.package_type = "";
+        download_params.param.package_sub_type = "";
+        download_params.param.package_size = pkg_size;
         download_params.slot = 0;
 
     retry:
@@ -206,14 +220,22 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
         ret = sceBgftServiceIntDownloadRegisterTaskByStorageEx(&download_params, &task_id);
         if (ret == 0x80990088 || ret == 0x80990015)
         {
-            printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title: %s", title_id);
+            printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title: [%s] %s!", title_id, name);
             ret = sceAppInstUtilAppUnInstall(&title_id[0]);
             if (ret != 0)
                 return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
             goto retry;
         }
-        else if (ret)
+
+        if (ret)
             return PKG_ERROR("sceBgftServiceIntDownloadRegisterTaskByStorageEx failed", ret);
+
+        if (ret == 0x80990086)
+        {
+            printAndLogFmt(2, "Installation already queued in notifcations, prompting user to cancel it.");
+            TextNotify(0, "Already queued in notifcations\nplease cancel it and retry.");
+            return ret;
+        }
 
         ret = sceBgftServiceDownloadStartTask(task_id);
         if (ret)
@@ -228,9 +250,7 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
     printAndLogFmt(0, "Allocating memory for install arguments...");
     struct install_args *args = (struct install_args *)malloc(sizeof(struct install_args));
     if (!args)
-    {
         return PKG_ERROR("Memory allocation failed", -1);
-    }
 
     args->title_id = strdup(title_id);
     args->task_id = task_id;
@@ -245,9 +265,8 @@ uint32_t installPKG(const char *fullpath, const char *name, bool deleteAfter)
     return 0;
 }
 
-uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
+uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI)
 {
-    char title_id[16];
     int ret = -1, task_id = -1;
 
     if (!bgft_init())
@@ -255,13 +274,21 @@ uint32_t installWebPKG(const char *url, const char *name, const char *icon_url)
 
     struct bgft_download_param download_params;
     memset(&download_params, 0, sizeof(download_params));
+
+    download_params.user_id = 0;
     download_params.entitlement_type = 5;
     download_params.id = "";
     download_params.content_url = url;
+    download_params.content_ex_url = "";
     download_params.content_name = name;
-    download_params.icon_path = icon_url;
-    download_params.playgo_scenario_id = "0";
+    download_params.icon_path = iconURI;
+    download_params.sku_id = "";
     download_params.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
+    download_params.playgo_scenario_id = "0";
+    download_params.release_date = "";
+    download_params.package_type = "";
+    download_params.package_sub_type = "";
+    download_params.package_size = NULL;
 
 retry:
     printAndLogFmt(0, "Registering web download task...");
@@ -275,11 +302,18 @@ retry:
 
     if (ret == 0x80990088 || ret == 0x80990015)
     {
-        printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title.");
+        printAndLogFmt(2, "Conflicting installation detected. Uninstalling existing title: [%s] %s!", title_id, name);
         ret = sceAppInstUtilAppUnInstall(title_id);
         if (ret != 0)
             return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
         goto retry;
+    }
+
+    if (ret == 0x80990086)
+    {
+        printAndLogFmt(2, "Installation already queued in notifcations, prompting user to cancel it.");
+        TextNotify(0, "Already queued in notifcations\nplease cancel it and retry.");
+        return ret;
     }
 
     if (ret)
