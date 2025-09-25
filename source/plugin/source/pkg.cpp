@@ -233,7 +233,7 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
         if (ret == 0x80990086)
         {
             printAndLogFmt(2, "Installation already queued in notifcations, prompting user to cancel it.");
-            TextNotify(0, "Already queued in notifcations\nplease cancel it and retry.");
+            TextNotify(222, "Already queued in notifcations\nplease cancel it and retry.");
             return ret;
         }
 
@@ -296,7 +296,7 @@ retry:
     if (ret == 0x80F00633)
     {
         printAndLogFmt(2, "Incorrect NP environment setting detected. Prompting user to change it.");
-        TextNotify(0, "Please change NP Environment\nin \"Debug Settings\" from\n \"NP\" to \"SP-INT\".");
+        TextNotify(222, "Please change NP Environment\nin \"Debug Settings\" from\n \"NP\" to \"SP-INT\".");
         ret = 0;
     }
 
@@ -312,7 +312,7 @@ retry:
     if (ret == 0x80990086)
     {
         printAndLogFmt(2, "Installation already queued in notifcations, prompting user to cancel it.");
-        TextNotify(0, "Already queued in notifcations\nplease cancel it and retry.");
+        TextNotify(222, "Already queued in notifcations\nplease cancel it and retry.");
         return ret;
     }
 
