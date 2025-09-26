@@ -306,20 +306,20 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
 
 static size_t DownloadAsBytesCallback(void *ptr, size_t size, size_t count)
 {
+    if (cancelDownload.load())
+        return 0;
+
     size_t totalSize = size * count;
     char *newBuffer = static_cast<char *>(realloc(dataBuffer, bufferSize + totalSize + 1));
     if (!newBuffer)
     {
         printAndLogFmt(4, "Memory allocation failed during download.");
-
         return 0;
     }
-
     dataBuffer = newBuffer;
     memcpy(&(dataBuffer[bufferSize]), ptr, totalSize);
     bufferSize += totalSize;
     dataBuffer[bufferSize] = '\0';
-
     return totalSize;
 }
 
@@ -348,7 +348,7 @@ char *DownloadAsBytesThread(const char *url, size_t *out_size)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadAsBytesCallback);
 
     CURLcode result = curl_easy_perform(curl);
-    if (result != CURLE_OK)
+    if (result != CURLE_OK || cancelDownload.load())
     {
         printAndLogFmt(3, "Download failed with error: %s", curl_easy_strerror(result));
 
@@ -358,6 +358,7 @@ char *DownloadAsBytesThread(const char *url, size_t *out_size)
 
         curl_easy_cleanup(curl);
 
+        *out_size = 0;
         return NULL;
     }
 
