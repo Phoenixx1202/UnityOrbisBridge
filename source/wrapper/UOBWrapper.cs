@@ -159,7 +159,6 @@ public static class UOBWrapper
 
     public enum PrintType { Default, Warning, Error }
 
-    // make use logtype and update uob plugin
     public static void Print(string message, LogType type = LogType.Log)
     {
         if (string.IsNullOrEmpty(message) ||
@@ -286,6 +285,50 @@ public static class UOBWrapper
 
         Print($"Too many redirects: {url}", LogType.Error);
         return null;
+    }
+
+    public static async Task<byte[]> DownloadAsBytes(string url, uint offset, uint size)
+    {
+        url = ProperFormatUrl(url);
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            Print($"Invalid URL format: {url}", LogType.Error);
+            return null;
+        }
+
+        if (Application.platform == RuntimePlatform.PS4)
+        {
+            try
+            {
+                IntPtr ptr = UOB.DownloadAsBytesRange(url, offset, size);
+                if (ptr == IntPtr.Zero)
+                    return null;
+                var managed = new byte[(int)size];
+                Marshal.Copy(ptr, managed, 0, (int)size);
+                return managed;
+            }
+            catch (Exception ex)
+            {
+                Print($"Failed to download range via plugin: {ex.Message}", LogType.Error);
+                return null;
+            }
+        }
+
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Range", "bytes=" + offset + "-" + (offset + size - 1));
+            var operation = request.SendWebRequest();
+            while (!operation.isDone)
+                await Task.Yield();
+
+            if (request.isNetworkError || request.isHttpError)
+            {
+                Print($"Failed to download range from {url}:\nError: {request.error}", LogType.Error);
+                return null;
+            }
+
+            return request.downloadHandler.data;
+        }
     }
 
     public static bool SetImageFromURL(string url, ref RawImage image)

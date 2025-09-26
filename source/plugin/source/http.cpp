@@ -378,6 +378,64 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
     return future.get();
 }
 
+char *DownloadAsBytesRangeThread(const char *url, uint32_t offset, uint32_t size)
+{
+    CURL *curl = curl_easy_init();
+    if (!curl)
+    {
+        return NULL;
+    }
+
+    free(dataBuffer);
+    dataBuffer = NULL;
+    bufferSize = 0;
+
+    std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, DownloadAsBytesCallback);
+
+    std::string range;
+    if (size == 0)
+        range = std::to_string(offset) + "-";
+    else
+        range = std::to_string(offset) + "-" + std::to_string((uint64_t)offset + (uint64_t)size - 1);
+
+    curl_easy_setopt(curl, CURLOPT_RANGE, range.c_str());
+
+    CURLcode result = curl_easy_perform(curl);
+    if (result != CURLE_OK || cancelDownload.load())
+    {
+        printAndLogFmt(3, "Download failed with error: %s", curl_easy_strerror(result));
+
+        free(dataBuffer);
+        dataBuffer = NULL;
+        bufferSize = 0;
+
+        curl_easy_cleanup(curl);
+        return NULL;
+    }
+
+    curl_easy_cleanup(curl);
+    return dataBuffer;
+}
+
+char *DownloadAsBytesRange(const char *url, uint32_t offset, uint32_t size)
+{
+    std::future<char *> future = std::async(std::launch::async,
+                                            [url, offset, size]()
+                                            {
+                                                return DownloadAsBytesRangeThread(url, offset, size);
+                                            });
+    return future.get();
+}
+
 const char *FollowRedirects(const char *url)
 {
     CURL *curl = curl_easy_init();
