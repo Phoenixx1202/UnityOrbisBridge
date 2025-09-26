@@ -300,11 +300,12 @@ public static class UOBWrapper
         {
             try
             {
-                IntPtr ptr = UOB.DownloadAsBytesRange(url, offset, size);
-                if (ptr == IntPtr.Zero)
+                int outSize;
+                IntPtr ptr = UOB.DownloadAsBytesRange(url, offset, size, out outSize);
+                if (ptr == IntPtr.Zero || outSize == 0)
                     return null;
-                var managed = new byte[(int)size];
-                Marshal.Copy(ptr, managed, 0, (int)size);
+                var managed = new byte[outSize];
+                Marshal.Copy(ptr, managed, 0, outSize);
                 return managed;
             }
             catch (Exception ex)

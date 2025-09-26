@@ -378,11 +378,12 @@ char *DownloadAsBytes(const char *url, size_t *out_size)
     return future.get();
 }
 
-char *DownloadAsBytesRangeThread(const char *url, uint32_t offset, uint32_t size)
+char *DownloadAsBytesRangeThread(const char *url, uint32_t offset, uint32_t size, size_t *out_size)
 {
     CURL *curl = curl_easy_init();
     if (!curl)
     {
+        if (out_size) *out_size = 0;
         return NULL;
     }
 
@@ -419,19 +420,23 @@ char *DownloadAsBytesRangeThread(const char *url, uint32_t offset, uint32_t size
         bufferSize = 0;
 
         curl_easy_cleanup(curl);
+        if (out_size) *out_size = 0;
         return NULL;
     }
 
     curl_easy_cleanup(curl);
+    if (out_size)
+        *out_size = bufferSize;
+
     return dataBuffer;
 }
 
-char *DownloadAsBytesRange(const char *url, uint32_t offset, uint32_t size)
+char *DownloadAsBytesRange(const char *url, uint32_t offset, uint32_t size, size_t *out_size)
 {
     std::future<char *> future = std::async(std::launch::async,
-                                            [url, offset, size]()
+                                            [url, offset, size, out_size]()
                                             {
-                                                return DownloadAsBytesRangeThread(url, offset, size);
+                                                return DownloadAsBytesRangeThread(url, offset, size, out_size);
                                             });
     return future.get();
 }

@@ -23,7 +23,7 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern void ResetDownloadVars();
         [DllImport("UnityOrbisBridge")] public static extern void CancelDownload();
         [DllImport("UnityOrbisBridge")] public static extern IntPtr DownloadAsBytes(string url, out int size);
-        [DllImport("UnityOrbisBridge")] public static extern IntPtr DownloadAsBytesRange(string url, uint offset, uint size);
+        [DllImport("UnityOrbisBridge")] public static extern IntPtr DownloadAsBytesRange(string url, uint offset, uint size, out int out_size);
         [DllImport("UnityOrbisBridge")] public static extern bool IsInternetAvailable();
 
         #endregion

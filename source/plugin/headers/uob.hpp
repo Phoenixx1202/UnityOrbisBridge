@@ -10,7 +10,7 @@ extern "C"
     void CancelDownload();
     void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name);
     char *DownloadAsBytes(const char *url, size_t *out_size);
-    char *DownloadAsBytesRange(const char *url, uint32_t offset, uint32_t size);
+    char *DownloadAsBytesRange(const char *url, uint32_t offset, uint32_t size, size_t *out_size);
 #pragma endregion
 
 #pragma region Logging and Notifications
