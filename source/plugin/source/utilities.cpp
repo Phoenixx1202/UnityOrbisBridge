@@ -41,13 +41,19 @@ void printAndLogFmt(int type, const char *message, ...)
   std::vsnprintf(buffer, bufferSize, message, args);
   va_end(args);
 
-  auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  char timestamp[100];
-  std::strftime(timestamp, sizeof(timestamp), "%m/%d/%Y @ %I:%M:%S%p", std::localtime(&now));
+  // --- ALTERAÇÃO AQUI: Comentamos a parte que gera Log em Arquivo ---
+  
+  // auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  // char timestamp[100];
+  // std::strftime(timestamp, sizeof(timestamp), "%m/%d/%Y @ %I:%M:%S%p", std::localtime(&now));
 
-  std::string logMessage = std::string(timestamp) + " " + logPrefixes[type] + " " + buffer;
+  // std::string logMessage = std::string(timestamp) + " " + logPrefixes[type] + " " + buffer;
+  
+  // Mantemos apenas o print no console (Debug do Kernel - Seguro)
   printToConsole(type, "%s", buffer);
-  AppendFile(logMessage.c_str());
+  
+  // MATAMOS A ESCRITA NO ARQUIVO:
+  // AppendFile(logMessage.c_str()); 
 }
 
 int convert_to_utf16(const char *utf8, uint16_t *utf16, uint32_t available)
