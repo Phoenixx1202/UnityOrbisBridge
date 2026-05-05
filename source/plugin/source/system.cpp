@@ -8,6 +8,9 @@ void PrintToConsole(const char *message, int type)
     if (type < 0 || type > 4)
         type = 0;
 
+    if (!message)
+        message = "";
+
     std::string logMessage = std::string(logPrefixes[type]) + " " + message;
     sceKernelDebugOutText(0, (logMessage + "\n").c_str());
 }
@@ -17,13 +20,7 @@ void PrintAndLog(const char *message, int type, const char *file)
     if (type < 0 || type > 4)
         type = 0;
 
-    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    char timestamp[100];
-    std::strftime(timestamp, sizeof(timestamp), "%m/%d/%Y @ %I:%M:%S%p", std::localtime(&now));
-    std::string fileString = std::string(timestamp) + " " + logPrefixes[type] + " " + message;
-
     PrintToConsole(message, type);
-    AppendFile(fileString.c_str(), file);
 }
 
 void TextNotify(int type, const char *msg)
@@ -239,6 +236,9 @@ void CreateDirectory(const char *dirPath)
 
 void WriteFile(const char *content, const char *file)
 {
+    if (!content || !file || !*file || strcmp(file, "/dev/null") == 0)
+        return;
+
     int fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1)
     {
@@ -255,6 +255,9 @@ void WriteFile(const char *content, const char *file)
 
 void AppendFile(const char *content, const char *file)
 {
+    if (!content || !file || !*file || strcmp(file, "/dev/null") == 0)
+        return;
+
     int fd = open(file, O_WRONLY | O_APPEND | O_CREAT, 0666);
     if (fd == -1)
     {
@@ -318,7 +321,7 @@ void InstallWebPackage(const char *url, const char *name, const char *titleId, c
     }
 
     status = !IsPlayStation5()
-                 ? installWebPKG(url, name, titleId, iconURI) != 0
+                 ? installWebPKG(url, name, titleId, iconURI) == 0
                  : SendInstallRequestForPS5(url);
 
     printAndLogFmt(status ? 1 : 3,

@@ -33,6 +33,9 @@ void printAndLogFmt(int type, const char *message, ...)
   if (type < 0 || type > 4)
     type = 0;
 
+  if (!message)
+    message = "";
+
   const size_t bufferSize = 1024;
   char buffer[bufferSize];
 
@@ -41,13 +44,7 @@ void printAndLogFmt(int type, const char *message, ...)
   std::vsnprintf(buffer, bufferSize, message, args);
   va_end(args);
 
-  auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  char timestamp[100];
-  std::strftime(timestamp, sizeof(timestamp), "%m/%d/%Y @ %I:%M:%S%p", std::localtime(&now));
-
-  std::string logMessage = std::string(timestamp) + " " + logPrefixes[type] + " " + buffer;
   printToConsole(type, "%s", buffer);
-  AppendFile(logMessage.c_str());
 }
 
 int convert_to_utf16(const char *utf8, uint16_t *utf16, uint32_t available)

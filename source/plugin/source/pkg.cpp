@@ -124,9 +124,9 @@ void *displayDownloadProgress(void *arguments)
 
     std::string msg = std::string("Installing... [") + args->title_id + "] " + args->fname;
 
-    printAndLogFmt(1, msg.c_str());
+    printAndLogFmt(1, "%s", msg.c_str());
 
-    initiateProgressDialog(args->fname);
+    initiateProgressDialog("%s", args->fname ? args->fname : "Installing...");
 
     int prog = 0;
     while (prog < 99)
@@ -140,9 +140,10 @@ void *displayDownloadProgress(void *arguments)
         if (progress_info.transferred > 0 && progress_info.error_result != 0)
             return (void *)(intptr_t)PKG_ERROR("BGFT_ERROR", progress_info.error_result);
 
-        prog = (uint32_t)(((float)progress_info.transferred / progress_info.length) * 100.f);
+        if (progress_info.length > 0)
+            prog = (uint32_t)(((float)progress_info.transferred / progress_info.length) * 100.f);
 
-        setProgressMsgText(prog, msg.c_str());
+        setProgressMsgText(prog, "%s", msg.c_str());
     }
 
     if (progress_info.error_result == 0)
@@ -175,7 +176,7 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
     if (if_exists(fullpath))
     {
         printAndLogFmt(0, "File found. Proceeding with installation.");
-        if (sceAppInst_done)
+        if (!sceAppInst_done)
         {
             printAndLogFmt(0, "Initializing AppInstUtil...");
             if (!app_inst_util_init())
@@ -193,9 +194,11 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
         if (!iconURI || !*iconURI)
             iconURI = "https://t4.ftcdn.net/jpg/01/25/36/71/360_F_125367167_JnrCHTqtZhAbWS3doG4tt631usPHiPnr.jpg";
 
-        ret = sceAppInstUtilAppGetSize(title_id, &pkg_size);
-        if (ret)
-            return PKG_ERROR("sceAppInstUtilAppGetSize failed", ret);
+        struct stat pkg_stat;
+        if (stat(fullpath, &pkg_stat) != 0 || pkg_stat.st_size <= 0)
+            return PKG_ERROR("stat package size failed", errno);
+
+        pkg_size = static_cast<uint64_t>(pkg_stat.st_size);
 
         struct bgft_download_param_ex download_params;
         memset(&download_params, 0, sizeof(download_params));

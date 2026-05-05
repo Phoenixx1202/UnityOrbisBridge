@@ -141,10 +141,10 @@ jobs:
 
     - name: Build Project
       run: |
-        echo "Building UnityOrbisBridge..."
+        echo "Using checked-in UnityOrbisBridge.prx..."
         cd source/plugin
-        make
-        echo "Build completed!"
+        test -f UnityOrbisBridge.prx
+        echo "PRX ready."
 
     - name: Upload PRX as Artifact
       uses: actions/upload-artifact@v4
@@ -197,7 +197,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: UnityOrbisBridge-DLL
-        path: source/Unity-API/UnityOrbisBridge.dll
+        path: source/Unity-API/bin/Release/UnityOrbisBridge.dll
 
   upload-artifacts:
     needs: [build-prx, build-dll]

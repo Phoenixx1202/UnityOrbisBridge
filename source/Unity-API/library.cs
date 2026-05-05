@@ -30,7 +30,7 @@ namespace UnityOrbisBridge
 
         #region Logging and Notifications
         [DllImport("UnityOrbisBridge")] public static extern void PrintToConsole(string message, int type);
-        [DllImport("UnityOrbisBridge")] public static extern void PrintAndLog(string message, int type, string filePath = "/data/UnityOrbisBridge.log");
+        [DllImport("UnityOrbisBridge")] public static extern void PrintAndLog(string message, int type, string filePath = "/dev/null");
         [DllImport("UnityOrbisBridge")] public static extern void TextNotify(int type, string message);
         [DllImport("UnityOrbisBridge")] public static extern void ImageNotify(string imageURL, string message);
 
@@ -54,10 +54,14 @@ namespace UnityOrbisBridge
         #endregion
 
         #region Filesystem Operations
-        [DllImport("UnityOrbisBridge")] public static extern void WriteFile(string content, string filePath = "/data/UnityOrbisBridge.log");
-        [DllImport("UnityOrbisBridge")] public static extern void AppendFile(string content, string filePath = "/data/UnityOrbisBridge.log");
+        [DllImport("UnityOrbisBridge")] public static extern void WriteFile(string content, string filePath = "/dev/null");
+        [DllImport("UnityOrbisBridge")] public static extern void AppendFile(string content, string filePath = "/dev/null");
         [DllImport("UnityOrbisBridge")] public static extern void MountRootDirectories();
         [DllImport("UnityOrbisBridge")] public static extern void InstallLocalPackage(string filePath, string name, string iconURI, bool deleteAfter);
+        public static void InstallLocalPackage(string filePath, string name, bool deleteAfter)
+        {
+            InstallLocalPackage(filePath, name, string.Empty, deleteAfter);
+        }
         [DllImport("UnityOrbisBridge")] public static extern void InstallWebPackage(string url, string name, string titleId, string iconURI);
         [DllImport("UnityOrbisBridge")] public static extern void ExtractZipFile(string filePath, string outPath);
         [DllImport("UnityOrbisBridge")] public static extern bool CheckIfAppExists(string titleId);

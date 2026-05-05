@@ -6,7 +6,7 @@ extern "C"
 {
 #pragma region Logging and Notifications
     void PrintToConsole(const char *message, int type = 0);
-    void PrintAndLog(const char *message, int type = 0, const char *file = "/user/data/UnityOrbisBridge.log");
+    void PrintAndLog(const char *message, int type = 0, const char *file = "/dev/null");
     void TextNotify(int type, const char *msg);
     void ImageNotify(const char *iconUri, const char *text);
 #pragma endregion
@@ -31,8 +31,8 @@ extern "C"
 #pragma region Filesystem Operations
     const char *GetDiskInfo(const char *infoType, const char *mountPoint);
     void CreateDirectory(const char *dirPath);
-    void WriteFile(const char *content, const char *file = "/user/data/UnityOrbisBridge.log");
-    void AppendFile(const char *content, const char *file = "/user/data/UnityOrbisBridge.log");
+    void WriteFile(const char *content, const char *file = "/dev/null");
+    void AppendFile(const char *content, const char *file = "/dev/null");
     void MountRootDirectories();
     void UnmountFromSandbox(const char *mountName);
     void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter);
