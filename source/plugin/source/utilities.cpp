@@ -45,6 +45,10 @@ void printAndLogFmt(int type, const char *message, ...)
   va_end(args);
 
   printToConsole(type, "%s", buffer);
+<<<<<<< HEAD
+=======
+  //AppendFile(logMessage.c_str());
+>>>>>>> e9a002cfae584b2a29dac7c7f6d5c2d86d6ae304
 }
 
 int convert_to_utf16(const char *utf8, uint16_t *utf16, uint32_t available)
