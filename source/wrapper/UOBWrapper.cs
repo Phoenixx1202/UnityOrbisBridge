@@ -170,7 +170,7 @@ public static class UOBWrapper
     }
 
     public static void Print(LogType type = LogType.Log,
-        string message = null, bool saveLog = true, string filePath = "/data/UnityOrbisBridge.log")
+        string message = null, bool saveLog = false, string filePath = "/data/UnityOrbisBridge.log")
     {
         if (string.IsNullOrEmpty(message) ||
             (type == LogType.Warning && DisablePrintWarnings)) return;
