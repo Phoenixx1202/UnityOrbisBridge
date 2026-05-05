@@ -47,7 +47,7 @@ void printAndLogFmt(int type, const char *message, ...)
 
   std::string logMessage = std::string(timestamp) + " " + logPrefixes[type] + " " + buffer;
   printToConsole(type, "%s", buffer);
-  AppendFile(logMessage.c_str());
+  //AppendFile(logMessage.c_str());
 }
 
 int convert_to_utf16(const char *utf8, uint16_t *utf16, uint32_t available)
