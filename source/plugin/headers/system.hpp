@@ -37,6 +37,8 @@ extern "C"
     void UnmountFromSandbox(const char *mountName);
     void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter);
     void InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURL);
+    int InstallManifestPackage(const char *url, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURL);
+    int GetLastPackageInstallError();
     void ExtractZipFile(const char *filePath, const char *outPath);
     bool CheckIfAppExists(const char *titleId);
 #pragma endregion

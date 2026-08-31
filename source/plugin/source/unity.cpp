@@ -118,16 +118,22 @@ void EnterSandbox()
 
 void BreakFromSandbox()
 {
-    if (IsFreeOfSandbox())
-        return;
-
     if (IsPlayStation5())
     {
+        if (hasBrokenFromTheSandbox)
+            return;
+
         if (!PS5_WhitelistJailbreak())
             PS5_Jailbreak();
+
+        hasBrokenFromTheSandbox = true;
+        return;
     }
     else
     {
+        if (IsFreeOfSandbox())
+            return;
+
         jbc_get_cred(&g_Creds);
         g_RootCreds = g_Creds;
         jbc_jailbreak_cred(&g_RootCreds);
@@ -185,103 +191,7 @@ void ExitApplication()
 
 void UpdateViaHomebrewStore(const char *query)
 {
-    int32_t userId = 0;
-    char *titleId = nullptr;
-
     BreakFromSandbox();
-
-    while (!IsFreeOfSandbox())
-        sceKernelSleep(1);
-
-    InitializeNativeDialogs();
-
-    if (!CheckIfAppExists("NPXS39041"))
-    {
-        printAndLogFmt(1, "The Homebrew Store currently isnt installed...");
-
-        const char *storeUrl = IsPlayStation5()
-                                   ? "https://pkg-zone.com/update/Store-R2-PS5.pkg"
-                                   : "https://pkg-zone.com/update/Store-R2.pkg";
-
-        printAndLogFmt(1, "Attempting to download the Homebrew Store...");
-
-        DownloadWebFile(storeUrl, "/user/app/store_download.pkg", false, "Homebrew Store");
-
-        while (downloadProgress < 99 && !hasDownloadCompleted && !downloadErrorOccured)
-            sceKernelSleep(1);
-
-        if (hasDownloadCompleted && !downloadErrorOccured)
-        {
-            printAndLogFmt(1, "Now installing the Homebrew Store...");
-
-            InstallLocalPackage("/user/app/store_download.pkg", "Homebrew Store", "", true);
-
-            if (IsPlayStation5())
-            {
-                while (!CheckIfAppExists("NPXS39041"))
-                    sceKernelSleep(1);
-            }
-
-            ResetDownloadVars();
-        }
-        else
-        {
-            printAndLogFmt(3, "Failed to download the Homebrew Store!");
-
-            return;
-        }
-    }
-    else
-        printAndLogFmt(1, "Homebrew Store is installed, launching...");
-
-    if (!IsPlayStation5())
-    {
-        int storeId = sceSystemServiceGetAppIdOfMiniApp();
-        if ((storeId & ~0xFFFFFF) == 0x60000000 && if_exists("/mnt/sandbox/pfsmnt/NPXS39041-app0/"))
-        {
-            printAndLogFmt(0, "Closing Homebrew Store for re-launch!...");
-
-            sceSystemServiceKillApp(storeId, -1, 0, 0);
-        }
-    }
-
-    if (!IsPlayStation5())
-    {
-        if (query != nullptr && query[0] != '\0')
-            titleId = strdup(query);
-        else
-            sceLncUtilGetAppTitleId(sceSystemServiceGetAppIdOfBigApp(), titleId);
-    }
-    else
-    {
-        if (query != nullptr && query[0] != '\0')
-            titleId = strdup(query);
-        else
-        {
-            printAndLogFmt(1, "No query provided to launch Homebrew Store...");
-
-            return;
-        }
-    }
-
-    const char *argv[] = {titleId, nullptr};
-
-    LncAppParam param;
-    param.size = sizeof(LncAppParam);
-    param.user_id = userId;
-    param.app_opt = 0;
-    param.crash_report = 0;
-    param.LaunchAppCheck_flag = LaunchApp_SkipSystemUpdate;
-
-    printAndLogFmt(0, "Attempting to launch Homebrew Store with \"%s\" query...", titleId);
-
-    uint32_t res = sceLncUtilLaunchApp("NPXS39041", argv, &param);
-    if ((res & 0x80000000) && res != 2157182993)
-        printAndLogFmt(3, "App launch failed with error code: %u", res);
-
-    if (res == 2157182993)
-        printAndLogFmt(1, "Homebrew Store has launched successfully!");
-
-    if (titleId)
-        free(titleId);
+    (void)query;
+    printAndLogFmt(1, "UpdateViaHomebrewStore is not enabled in this bridge build.");
 }

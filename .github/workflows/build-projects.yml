@@ -184,20 +184,23 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.3
 
-    - name: Build Solution in Release Configuration
+    - name: Use Checked-in DLL
       run: |
-        msbuild.exe source/Unity-API/UnityOrbisBridge.sln /nologo /nr:false /p:Configuration=Release /p:DeployOnBuild=true /p:DeployDefaultTarget=Build /p:platform="Any CPU" /p:TargetFrameworkVersion="v3.5" -m
+        Write-Host "Using checked-in UnityOrbisBridge.dll..."
+        if (!(Test-Path "source/Unity-API/UnityOrbisBridge.dll")) {
+          throw "source/Unity-API/UnityOrbisBridge.dll not found"
+        }
 
-    - name: Check Build Output
+    - name: Check DLL Artifact
       run: |
-        echo "Checking for DLL in the build folder"
-        dir source/Unity-API/bin/Release
+        echo "Checking checked-in DLL"
+        dir source/Unity-API
 
     - name: Upload DLL as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: UnityOrbisBridge-DLL
-        path: source/Unity-API/bin/Release/UnityOrbisBridge.dll
+        path: source/Unity-API/UnityOrbisBridge.dll
 
   upload-artifacts:
     needs: [build-prx, build-dll]

@@ -67,15 +67,18 @@ bool IsPlayStation5()
 const char *GetFWVersion()
 {
     static char versionString[32];
-    OrbisKernelSwVersion versionInfo;
-
-    versionInfo.Size = sizeof(OrbisKernelSwVersion);
+    OrbisKernelSwVersion versionInfo = {};
 
     if (sceKernelGetSystemSwVersion(&versionInfo) < 0)
         return "00.00";
 
-    strncpy(versionString, versionInfo.VersionString, sizeof(versionString) - 1);
+    strncpy(versionString, versionInfo.s_version, sizeof(versionString) - 1);
     versionString[sizeof(versionString) - 1] = '\0';
+
+    while (versionString[0] == ' ')
+    {
+        memmove(versionString, versionString + 1, strlen(versionString));
+    }
 
     return versionString[0] ? versionString : "00.00";
 }
@@ -330,6 +333,48 @@ void InstallWebPackage(const char *url, const char *name, const char *titleId, c
 
     if (redirected != url)
         free((void *)redirected);
+}
+
+int InstallManifestPackage(const char *url, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURI)
+{
+    (void)iconURI;
+
+    PrintToConsole("Starting manifest package installation...", 0);
+    InitializeNativeDialogs();
+
+    if (url == nullptr || url[0] == '\0')
+    {
+        printAndLogFmt(3, "Manifest package URL is empty.");
+        return -1;
+    }
+
+    const char *installUrl = url;
+    const char *redirected = FollowRedirects(url);
+    bool wasRedirected = redirected != nullptr && redirected != url;
+
+    if (wasRedirected)
+    {
+        printAndLogFmt(0, "Redirected manifest URL: %s", redirected);
+        installUrl = redirected;
+    }
+
+    int result = !IsPlayStation5()
+                     ? installManifestPKG(installUrl, name, contentId, "", packageSize, packageType)
+                     : (SendInstallRequestForPS5(installUrl) ? 0 : -2);
+
+    printAndLogFmt(result >= 0 ? 1 : 3,
+                   result >= 0 ? "Manifest package registration succeeded."
+                               : "Manifest package registration has failed.");
+
+    if (wasRedirected)
+        free((void *)redirected);
+
+    return result;
+}
+
+int GetLastPackageInstallError()
+{
+    return getLastPackageInstallError();
 }
 
 void ExtractZipFile(const char *filePath, const char *outPath)

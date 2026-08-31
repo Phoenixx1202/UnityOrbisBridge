@@ -2,17 +2,22 @@
 TARGET      := UnityOrbisBridge.prx
 
 # Libraries linked into the ELF.
-LIBS        := -lc -lc++ -lz -lkernel -ljbc -lcurl -lpolarssl                                    \
+LIBS        := -lc++ -lz -lkernel /home/phoenix/ps4dev/OpenOrbis/PS4Toolchain/lib/libjbc.a      \
+               -lcurl /home/phoenix/ps4dev/OpenOrbis/PS4Toolchain/lib/libpolarssl.a               \
                -lSceAppInstUtil -lSceLibcInternal -lSceNet                                       \
                -lSceUserService -lSceLncUtil -lSceSysmodule                                      \
                -lSceSystemService -lSceCommonDialog -lSceMsgDialog                               \
                -lSceImeDialog -lSceIme -lSceBgft -lSceAppInstUtil                                \
-               -lSceSysUtil -lSceMsgDialog -lSceCommonDialog                                     \
+               -lSceSysUtil -lSceMsgDialog -lSceCommonDialog -lc                                 \
 
 # Additional compile flags.
 EXTRAFLAGS  := -Wall -Wno-int-to-pointer-cast -Werror -Wno-for-loop-analysis                     \
                -fcolor-diagnostics -Iinclude -Wall -D__ORBIS__ -D__PS4__                         \
                -Wno-unused-function -Wno-misleading-indentation -Wno-invalid-noreturn
+
+empty       :=
+space       := $(empty) $(empty)
+PS5_SDK_DIR := /home/phoenix/ps5-payload-sdk/etaHEN/Source$(space)Code
 
 # Root vars.
 TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
@@ -32,13 +37,18 @@ $(patsubst $(PROJDIR)/%.s, $(INTDIR)/%.o, $(ASMFILES))                          
 # Define final C/C++ flags.
 CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c                         \
                $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include                \
-			   -Iinclude -std=c11 -D_DEFAULT_SOURCE -DFMT_HEADER_ONLY 
+			   -Iinclude -I"$(PS5_SDK_DIR)/include" -I"/home/phoenix/ps5-payload-sdk/etaHEN/Source Code/util/include" \
+               -I"/home/phoenix/ps5-payload-sdk/target/include"                                  \
+               -std=c11 -D_DEFAULT_SOURCE -DFMT_HEADER_ONLY
 
 CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1                                    \
-			   -std=c++11 -Iinclude -DFMT_HEADER_ONLY
+			   -std=c++11 -Iinclude -I"$(PS5_SDK_DIR)/include" -I"/home/phoenix/ps5-payload-sdk/etaHEN/Source Code/util/include" \
+               -I"/home/phoenix/ps5-payload-sdk/target/include"                                  \
+               -DFMT_HEADER_ONLY
 
 LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr                    \
-               -L$(TOOLCHAIN)/lib $(LIBS) $(TOOLCHAIN)/lib/crtlib.o
+               -L"$(PS5_SDK_DIR)/lib" -L$(TOOLCHAIN)/lib --start-group $(LIBS)                  \
+               $(TOOLCHAIN)/lib/crtlib.o --end-group
 
 # Create the intermediate directory incase it doesn't already exist.
 _unused     := $(shell mkdir -p $(INTDIR))

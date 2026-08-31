@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/vfs.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <atomic>
 #include <thread>
 #include <cstdarg>

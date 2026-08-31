@@ -18,5 +18,7 @@ void *displayDownloadProgress(void *argument);
 
 uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter = false);
 uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI);
+int installManifestPKG(const char *manifestUrl, const char *name, const char *contentId, const char *iconURI, unsigned long packageSize, const char *packageType);
+int getLastPackageInstallError(void);
 
 bool SendInstallRequestForPS5(const char *url);
