@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-prx:
     runs-on: ubuntu-latest
@@ -141,9 +144,12 @@ jobs:
 
     - name: Build Project
       run: |
-        echo "Using checked-in UnityOrbisBridge.prx..."
+        echo "Building UnityOrbisBridge.prx..."
         cd source/plugin
+        make clean
+        make
         test -f UnityOrbisBridge.prx
+        strings UnityOrbisBridge.prx | grep InstallManifestPackage
         echo "PRX ready."
 
     - name: Upload PRX as Artifact
@@ -160,54 +166,33 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Check for Visual Studio Build Tools
-      id: check-vsbuildtools
-      run: |
-        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
-        if ($vsPath) { echo "VSBuildToolsFound=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 }
-
-    - name: Cache Visual Studio Build Tools
-      id: cache-vsbuildtools
-      uses: actions/cache@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
       with:
-        path: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools
-        key: windows-vsbuildtools-16.11.5
-        restore-keys: |
-          windows-vsbuildtools-16.11
+        dotnet-version: '8.0.x'
 
-    - name: Install Visual Studio Build Tools
-      if: steps.check-vsbuildtools.outputs.VSBuildToolsFound != 'true' && steps.cache-vsbuildtools.outputs.cache-hit != 'true'
+    - name: Build C# API DLL
       run: |
-        choco install visualstudio2019buildtools --version=16.11.5.0 -y --no-progress
-        Start-Process "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" -ArgumentList "modify", "--quiet", "--wait", "--installPath", "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools", "--add", "Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools", "--add", "Microsoft.VisualStudio.Workload.NetCoreBuildTools" -NoNewWindow -Wait
-
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.3
-
-    - name: Use Checked-in DLL
-      run: |
-        Write-Host "Using checked-in UnityOrbisBridge.dll..."
-        if (!(Test-Path "source/Unity-API/UnityOrbisBridge.dll")) {
-          throw "source/Unity-API/UnityOrbisBridge.dll not found"
-        }
-
-    - name: Check DLL Artifact
-      run: |
-        echo "Checking checked-in DLL"
-        dir source/Unity-API
+        dotnet build -c Release source/Unity-API/UnityOrbisBridge.csproj
+        Copy-Item source/Unity-API/bin/Release/UnityOrbisBridge.dll source/Unity-API/UnityOrbisBridge.dll -Force
 
     - name: Upload DLL as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: UnityOrbisBridge-DLL
-        path: source/Unity-API/UnityOrbisBridge.dll
+        path: source/Unity-API/bin/Release/UnityOrbisBridge.dll
 
   upload-artifacts:
     needs: [build-prx, build-dll]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
 
     - name: Download PRX Artifact
       uses: actions/download-artifact@v4
@@ -232,11 +217,15 @@ jobs:
 
     - name: Commit & Push Compiled Binaries
       run: |
-        git config user.name "GitHub Actions"
-        git config user.email "github-actions@github.com"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add source/plugin/UnityOrbisBridge.prx source/Unity-API/UnityOrbisBridge.dll
-        git commit -m "Final commit for UnityOrbisBridge build artifacts" || echo "No changes to commit"
-        git push origin $GITHUB_REF
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: update build artifacts [skip ci]"
+          git push origin HEAD:${GITHUB_REF_NAME} || echo "Push skipped or permissions restricted"
+        fi
 
     - name: Create Archive
       run: |

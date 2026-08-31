@@ -2,22 +2,17 @@
 TARGET      := UnityOrbisBridge.prx
 
 # Libraries linked into the ELF.
-LIBS        := -lc++ -lz -lkernel /home/phoenix/ps4dev/OpenOrbis/PS4Toolchain/lib/libjbc.a      \
-               -lcurl /home/phoenix/ps4dev/OpenOrbis/PS4Toolchain/lib/libpolarssl.a               \
+LIBS        := -lc++ -lz -lkernel $(TOOLCHAIN)/lib/libjbc.a                                      \
+               -lcurl $(TOOLCHAIN)/lib/libpolarssl.a                                             \
                -lSceAppInstUtil -lSceLibcInternal -lSceNet                                       \
                -lSceUserService -lSceLncUtil -lSceSysmodule                                      \
                -lSceSystemService -lSceCommonDialog -lSceMsgDialog                               \
-               -lSceImeDialog -lSceIme -lSceBgft -lSceAppInstUtil                                \
-               -lSceSysUtil -lSceMsgDialog -lSceCommonDialog -lc                                 \
+               -lSceImeDialog -lSceIme -lSceBgft -lSceSysUtil -lc
 
 # Additional compile flags.
 EXTRAFLAGS  := -Wall -Wno-int-to-pointer-cast -Werror -Wno-for-loop-analysis                     \
                -fcolor-diagnostics -Iinclude -Wall -D__ORBIS__ -D__PS4__                         \
                -Wno-unused-function -Wno-misleading-indentation -Wno-invalid-noreturn
-
-empty       :=
-space       := $(empty) $(empty)
-PS5_SDK_DIR := /home/phoenix/ps5-payload-sdk/etaHEN/Source$(space)Code
 
 # Root vars.
 TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
@@ -37,23 +32,14 @@ $(patsubst $(PROJDIR)/%.s, $(INTDIR)/%.o, $(ASMFILES))                          
 # Define final C/C++ flags.
 CFLAGS      := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c                         \
                $(EXTRAFLAGS) -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include                \
-			   -Iinclude -I"$(PS5_SDK_DIR)/include" -I"/home/phoenix/ps5-payload-sdk/etaHEN/Source Code/util/include" \
-               -I"/home/phoenix/ps5-payload-sdk/target/include"                                  \
-               -std=c11 -D_DEFAULT_SOURCE -DFMT_HEADER_ONLY
+               -Iinclude -std=c11 -D_DEFAULT_SOURCE -DFMT_HEADER_ONLY
 
 CXXFLAGS    := $(CFLAGS) -isystem $(TOOLCHAIN)/include/c++/v1                                    \
-			   -std=c++11 -Iinclude -I"$(PS5_SDK_DIR)/include" -I"/home/phoenix/ps5-payload-sdk/etaHEN/Source Code/util/include" \
-               -I"/home/phoenix/ps5-payload-sdk/target/include"                                  \
-               -DFMT_HEADER_ONLY
+               -std=c++11 -Iinclude -DFMT_HEADER_ONLY
 
 LDFLAGS     := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x --eh-frame-hdr                    \
-               -L"$(PS5_SDK_DIR)/lib" -L$(TOOLCHAIN)/lib --start-group $(LIBS)                  \
+               -L$(TOOLCHAIN)/lib --start-group $(LIBS)                                          \
                $(TOOLCHAIN)/lib/crtlib.o --end-group
-
-# Create the intermediate directory incase it doesn't already exist.
-_unused     := $(shell mkdir -p $(INTDIR))
-
-# Check for Linux vs macOS and account for clang/ld path.
 UNAME_S     := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
@@ -72,8 +58,11 @@ ifeq ($(UNAME_S),Darwin)
 	ASMLR   := as
 endif
 
+# Create intermediate directory
+_unused     := $(shell mkdir -p $(INTDIR))
+
 # Define build rules.
-$(TARGET): $(INTDIR) $(OBJS)
+$(TARGET): $(OBJS)
 	$(LD) $(OBJS) -o $(INTDIR)/$(PROJDIR).elf $(LDFLAGS) -e main
 	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/$(PROJDIR).elf                           \
 	-out=$(INTDIR)/$(PROJDIR).oelf --lib=$(TARGET) --paid 0x3800000000000011
@@ -87,14 +76,11 @@ $(INTDIR)/%.o: $(PROJDIR)/%.c
 $(INTDIR)/%.o: $(PROJDIR)/%.cpp
 	$(CCX) $(CXXFLAGS) -o $@ $<
 
-$(INTDIR)/%.o: $(COMMONDIR)/%.cpp
-	$(CCX) $(CXXFLAGS) -o $@ $<
-
 # Define phony targets.
-.PHONY: clean
+.PHONY: clean all
 .DEFAULT_GOAL := all
 
-all: $(TARGET) $(TARGETSTUB)
+all: $(TARGET)
 
 clean:
-	rm -f $(TARGET) $(TARGETSTUB) $(INTDIR)/$(PROJDIR).elf $(INTDIR)/$(PROJDIR).oelf $(OBJS)
+	rm -rf $(TARGET) $(INTDIR)
