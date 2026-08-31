@@ -178,8 +178,10 @@ static BgftRegisterPackageTaskFn ResolveBgftRegisterPackageTask()
     }
 
     const char *symbols[] = {
+        "sceBgftServiceIntDownloadRegisterTask", // Flatz uses this for base games!
         "sceBgftServiceIntDebugDownloadRegisterPkg",
-        "sceBgftServiceIntDownloadRegisterTask",
+        "sceBgftDebugDownloadRegisterPkg",
+        "sceBgftServiceDownloadRegisterTask"
     };
 
     for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++)
