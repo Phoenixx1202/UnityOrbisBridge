@@ -149,7 +149,7 @@ jobs:
         make clean
         make
         test -f UnityOrbisBridge.prx
-        strings UnityOrbisBridge.prx | grep InstallManifestPackage
+        strings build/source.elf | grep InstallManifestPackage
         echo "PRX ready."
 
     - name: Upload PRX as Artifact
