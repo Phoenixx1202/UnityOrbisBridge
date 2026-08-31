@@ -336,22 +336,75 @@ void InstallWebPackage(const char *url, const char *name, const char *titleId, c
         free((void *)redirected);
 }
 
-int InstallManifestPackage(const char *url, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURI)
-{
-    (void)iconURI;
+// Declare a função interna da Sony para tarefas locais
+extern "C" int sceBgftServiceIntDownloadRegisterTaskByStorage(const void* info, int* taskId);
 
+// Declare a estrutura
+struct SceBgftTaskRegisterInfoByStorage {
+    int userId;
+    int entitlementType;
+    const char* contentId;
+    const char* path;
+    const char* title;
+    const char* iconPath;
+    const char* packageType;
+    const char* packageVersion;
+    uint64_t packageSize;
+    bool isApp;
+};
+
+int InstallManifestPackage(const char *urlOrPath, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURI)
+{
     PrintToConsole("Starting manifest package installation...", 0);
     InitializeNativeDialogs();
 
-    if (url == nullptr || url[0] == '\0')
+    if (urlOrPath == nullptr || urlOrPath[0] == '\0')
     {
-        printAndLogFmt(3, "Manifest package URL is empty.");
+        printAndLogFmt(3, "Manifest package URL or path is empty.");
         return -1;
     }
 
-    const char *installUrl = url;
-    const char *redirected = FollowRedirects(url);
-    bool wasRedirected = redirected != nullptr && redirected != url;
+    // 1. VERIFICAÇÃO PARA ARQUIVO LOCAL
+    // Se o argumento começar com '/' (ex: /user/data/pkg/manifest.json)
+    if (urlOrPath[0] == '/') 
+    {
+        int taskId = -1;
+        SceBgftTaskRegisterInfoByStorage info;
+        memset(&info, 0, sizeof(info));
+        
+        info.userId = 0;              // Usuário primário
+        info.entitlementType = 0;
+        info.contentId = contentId;
+        info.path = urlOrPath;        // O caminho limpo: /user/data/pkg/manifest_XXXX.json
+        info.title = name;
+        info.iconPath = iconURI ? iconURI : "";
+        info.packageType = packageType; 
+        info.packageVersion = "01.00"; 
+        info.packageSize = packageSize;
+        info.isApp = true;            // Obrigatório para Base PKGs
+
+        if (!bgft_init())
+        {
+            printAndLogFmt(3, "BGFT initialization failed for local manifest.");
+            return -1;
+        }
+
+        // Registra no BGFT usando a API de Storage
+        int ret = sceBgftServiceIntDownloadRegisterTaskByStorage(&info, &taskId);
+        
+        if (ret == 0) {
+            printAndLogFmt(1, "Local manifest package registration succeeded. Task ID: %d", taskId);
+            return taskId;
+        } else {
+            printAndLogFmt(3, "Local manifest package registration failed: 0x%08X", ret);
+            return ret; 
+        }
+    }
+
+    // 2. FALLBACK PARA O CÓDIGO ORIGINAL (WEB)
+    const char *installUrl = urlOrPath;
+    const char *redirected = FollowRedirects(urlOrPath);
+    bool wasRedirected = redirected != nullptr && redirected != urlOrPath;
 
     if (wasRedirected)
     {
@@ -360,7 +413,7 @@ int InstallManifestPackage(const char *url, const char *name, const char *conten
     }
 
     int result = !IsPlayStation5()
-                     ? installManifestPKG(installUrl, name, contentId, "", packageSize, packageType)
+                     ? installManifestPKG(installUrl, name, contentId, iconURI, packageSize, packageType)
                      : (SendInstallRequestForPS5(installUrl) ? 0 : -2);
 
     printAndLogFmt(result >= 0 ? 1 : 3,
