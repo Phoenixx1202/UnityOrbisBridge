@@ -1,3 +1,8 @@
+# Root vars.
+TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
+PROJDIR     := source
+INTDIR      := build
+
 # Library metadata.
 TARGET      := UnityOrbisBridge.prx
 
@@ -13,11 +18,6 @@ LIBS        := -lc++ -lz -lkernel $(TOOLCHAIN)/lib/libjbc.a                     
 EXTRAFLAGS  := -Wall -Wno-int-to-pointer-cast -Werror -Wno-for-loop-analysis                     \
                -fcolor-diagnostics -Iinclude -Wall -D__ORBIS__ -D__PS4__                         \
                -Wno-unused-function -Wno-misleading-indentation -Wno-invalid-noreturn
-
-# Root vars.
-TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
-PROJDIR     := source
-INTDIR      := build
 
 # Define objects to build.
 CFILES      := $(wildcard $(PROJDIR)/*.c)
