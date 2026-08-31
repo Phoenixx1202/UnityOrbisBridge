@@ -1,5 +1,10 @@
 #include "../headers/includes.hpp"
 
+extern "C" int __inet_pton(int af, const char *src, void *dst);
+extern "C" int __inet_aton(const char *cp, void *addr) {
+    return __inet_pton(2 /*AF_INET*/, cp, addr) == 1 ? 1 : 0;
+}
+
 const char *logPrefixes[] =
     {"[DEBUG]", "[INFO]",
      "[WARNING]",

@@ -34,9 +34,29 @@ typedef struct
     long unknown[810];
 } PlayGoInfo;
 
-extern "C" int sceAppInstUtilInstallByPackage(MetaInfo *arg1,
-                                              SceAppInstallPkgInfo *pkg_info,
-                                              PlayGoInfo *arg2);
+typedef int (*SceAppInstUtilInstallByPackageFn)(MetaInfo *arg1, SceAppInstallPkgInfo *pkg_info, PlayGoInfo *arg2);
+
+static SceAppInstUtilInstallByPackageFn ResolveAppInstUtilInstallByPackage()
+{
+    static SceAppInstUtilInstallByPackageFn installFn = nullptr;
+    if (installFn != nullptr)
+        return installFn;
+
+    int handle = sceKernelLoadStartModule("/system/common/lib/libSceAppInstUtil.sprx", 0, 0, 0, 0, 0);
+    if (handle < 0)
+        handle = sceKernelLoadStartModule("libSceAppInstUtil.sprx", 0, 0, 0, 0, 0);
+    
+    if (handle >= 0)
+    {
+        void *symbolAddress = nullptr;
+        if (sceKernelDlsym(handle, "sceAppInstUtilInstallByPackage", &symbolAddress) == 0 && symbolAddress != nullptr)
+        {
+            installFn = reinterpret_cast<SceAppInstUtilInstallByPackageFn>(symbolAddress);
+            return installFn;
+        }
+    }
+    return nullptr;
+}
 
 int PKG_ERROR(const char *name, int ret)
 {
@@ -198,8 +218,12 @@ static uint32_t InstallByPackageUri(const char *uri, const char *name, const cha
     SceAppInstallPkgInfo pkgInfo = {};
     PlayGoInfo playGo = {};
 
+    SceAppInstUtilInstallByPackageFn installFn = ResolveAppInstUtilInstallByPackage();
+    if (installFn == nullptr)
+        return PKG_ERROR("ResolveAppInstUtilInstallByPackage failed", -5);
+
     printAndLogFmt(0, "Requesting install by package: %s", uri);
-    int ret = sceAppInstUtilInstallByPackage(&meta, &pkgInfo, &playGo);
+    int ret = installFn(&meta, &pkgInfo, &playGo);
     if (ret != 0)
         return PKG_ERROR("sceAppInstUtilInstallByPackage failed", ret);
 
