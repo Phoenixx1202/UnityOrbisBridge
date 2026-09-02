@@ -68,12 +68,11 @@ const char *GetFWVersion()
 {
     static char versionString[32];
     OrbisKernelSwVersion versionInfo = {};
-    versionInfo.Size = sizeof(OrbisKernelSwVersion);
 
     if (sceKernelGetSystemSwVersion(&versionInfo) < 0)
         return "00.00";
 
-    strncpy(versionString, versionInfo.VersionString, sizeof(versionString) - 1);
+    strncpy(versionString, versionInfo.s_version, sizeof(versionString) - 1);
     versionString[sizeof(versionString) - 1] = '\0';
 
     while (versionString[0] == ' ')
@@ -310,36 +309,23 @@ void InstallLocalPackage(const char *file, const char *name, const char *iconURI
     printAndLogFmt(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
-void InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURI)
+int InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURI)
 {
     PrintToConsole("Starting package installation...", 0);
     InitializeNativeDialogs();
 
-    const char *redirected = FollowRedirects(url);
-    bool status = false;
+    int result = !IsPlayStation5()
+                     ? static_cast<int>(installWebPKG(url, name, titleId, iconURI))
+                     : (SendInstallRequestForPS5(url) ? 0 : -2);
 
-    if (redirected != url)
-    {
-        printAndLogFmt(0, "Redirected URL: %s", redirected);
-        url = redirected;
-    }
-
-    status = !IsPlayStation5()
-                 ? installWebPKG(url, name, titleId, iconURI) == 0
-                 : SendInstallRequestForPS5(url);
-
-    printAndLogFmt(status ? 1 : 3,
-                   status ? "Package installation succeeded."
-                          : "Package installation has failed.");
-
-    if (redirected != url)
-        free((void *)redirected);
+    printAndLogFmt(result == 0 ? 1 : 3,
+                   result == 0 ? "Package installation succeeded."
+                               : "Package installation has failed.");
+    return result;
 }
 
 int InstallManifestPackage(const char *url, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURI)
 {
-    (void)iconURI;
-
     PrintToConsole("Starting manifest package installation...", 0);
     InitializeNativeDialogs();
 
@@ -360,7 +346,7 @@ int InstallManifestPackage(const char *url, const char *name, const char *conten
     }
 
     int result = !IsPlayStation5()
-                     ? installManifestPKG(installUrl, name, contentId, "", packageSize, packageType)
+                     ? installManifestPKG(installUrl, name, contentId, iconURI, packageSize, packageType)
                      : (SendInstallRequestForPS5(installUrl) ? 0 : -2);
 
     printAndLogFmt(result >= 0 ? 1 : 3,
@@ -369,6 +355,28 @@ int InstallManifestPackage(const char *url, const char *name, const char *conten
 
     if (wasRedirected)
         free((void *)redirected);
+
+    return result;
+}
+
+int InstallManifestPackageFromJson(const char *manifestJson, const char *localIp, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURI)
+{
+    PrintToConsole("Starting manifest JSON package installation...", 0);
+    InitializeNativeDialogs();
+
+    if (manifestJson == nullptr || manifestJson[0] == '\0')
+    {
+        printAndLogFmt(3, "Manifest JSON is empty.");
+        return -1;
+    }
+
+    int result = !IsPlayStation5()
+                     ? installManifestPKGFromJson(manifestJson, localIp, name, contentId, iconURI, packageSize, packageType)
+                     : -2;
+
+    printAndLogFmt(result >= 0 ? 1 : 3,
+                   result >= 0 ? "Manifest JSON package registration succeeded."
+                               : "Manifest JSON package registration has failed.");
 
     return result;
 }

@@ -1,9 +1,20 @@
 #include "../headers/includes.hpp"
+#include <mutex>
+#include <string>
+
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 bool sceAppInst_done = false;
 static bool s_bgft_done = false;
 static void *s_bgft_heap = nullptr;
 static int s_lastPackageInstallError = 0;
+static const int DUSKARYON_MANIFEST_SERVER_PORT = 9998;
+static std::atomic<bool> s_manifest_server_running(false);
+static int s_manifest_server_socket = -1;
+static std::mutex s_manifest_mutex;
+static std::string s_manifest_json;
 
 typedef char playgo_scenario_id_t[3];
 typedef char content_id_t[0x30];
@@ -96,6 +107,80 @@ void app_inst_util_fini(void)
     sceAppInst_done = false;
 }
 
+typedef int (*BgftInitFn)(bgft_init_params *params);
+typedef int (*BgftTermFn)(void);
+typedef int (*BgftRegisterPackageTaskFn)(bgft_download_param *params, int *task_id);
+
+static int LoadBgftModule()
+{
+    int handle = sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, 0, 0, 0, 0);
+    if (handle < 0)
+        handle = sceKernelLoadStartModule("libSceBgft.sprx", 0, 0, 0, 0, 0);
+
+    if (handle < 0)
+    {
+        s_lastPackageInstallError = handle;
+        printAndLogFmt(4, "Failed to load libSceBgft.sprx: 0x%08X", handle);
+    }
+
+    return handle;
+}
+
+template <typename T>
+static T ResolveBgftSymbol(const char *const *symbols, size_t symbolCount)
+{
+    int handle = LoadBgftModule();
+    if (handle < 0)
+        return nullptr;
+
+    for (size_t i = 0; i < symbolCount; i++)
+    {
+        void *symbolAddress = nullptr;
+        int ret = sceKernelDlsym(handle, symbols[i], &symbolAddress);
+        if (ret == 0 && symbolAddress != nullptr)
+        {
+            printAndLogFmt(0, "Resolved BGFT symbol: %s", symbols[i]);
+            return reinterpret_cast<T>(symbolAddress);
+        }
+    }
+
+    s_lastPackageInstallError = -5;
+    printAndLogFmt(4, "Failed to resolve BGFT symbol.");
+    return nullptr;
+}
+
+static BgftInitFn ResolveBgftInit()
+{
+    static BgftInitFn initFn = nullptr;
+    if (initFn != nullptr)
+        return initFn;
+
+    const char *symbols[] = {
+        "sceBgftServiceIntInit",
+        "sceBgftInitialize",
+        "sceBgftServiceInit"
+    };
+
+    initFn = ResolveBgftSymbol<BgftInitFn>(symbols, sizeof(symbols) / sizeof(symbols[0]));
+    return initFn;
+}
+
+static BgftTermFn ResolveBgftTerm()
+{
+    static BgftTermFn termFn = nullptr;
+    if (termFn != nullptr)
+        return termFn;
+
+    const char *symbols[] = {
+        "sceBgftServiceIntTerm",
+        "sceBgftFinalize",
+        "sceBgftServiceTerm"
+    };
+
+    termFn = ResolveBgftSymbol<BgftTermFn>(symbols, sizeof(symbols) / sizeof(symbols[0]));
+    return termFn;
+}
+
 bool bgft_init(void)
 {
     if (s_bgft_done)
@@ -118,8 +203,17 @@ bool bgft_init(void)
     params.heap = s_bgft_heap;
     params.heapSize = BGFT_HEAP_SIZE;
 
+    BgftInitFn initFn = ResolveBgftInit();
+    if (initFn == nullptr)
+    {
+        free(s_bgft_heap);
+        s_bgft_heap = nullptr;
+        s_bgft_done = false;
+        return false;
+    }
+
     printAndLogFmt(0, "Initializing BGFT...");
-    int ret = sceBgftServiceInit(&params);
+    int ret = initFn(&params);
     if (ret != 0)
     {
         s_lastPackageInstallError = ret;
@@ -139,9 +233,13 @@ void bgft_fini(void)
 {
     if (s_bgft_done)
     {
-        int ret = sceBgftServiceTerm();
-        if (ret != 0)
-            printAndLogFmt(4, "sceBgftServiceTerm failed: 0x%08X", ret);
+        BgftTermFn termFn = ResolveBgftTerm();
+        if (termFn != nullptr)
+        {
+            int ret = termFn();
+            if (ret != 0)
+                printAndLogFmt(4, "BGFT term failed: 0x%08X", ret);
+        }
     }
 
     if (s_bgft_heap != nullptr)
@@ -158,24 +256,11 @@ void *displayDownloadProgress(void *arguments)
     return arguments;
 }
 
-typedef int (*BgftRegisterPackageTaskFn)(bgft_download_param *params, int *task_id);
-
 static BgftRegisterPackageTaskFn ResolveBgftRegisterPackageTask()
 {
     static BgftRegisterPackageTaskFn registerTask = nullptr;
     if (registerTask != nullptr)
         return registerTask;
-
-    int handle = sceKernelLoadStartModule("/system/common/lib/libSceBgft.sprx", 0, 0, 0, 0, 0);
-    if (handle < 0)
-        handle = sceKernelLoadStartModule("libSceBgft.sprx", 0, 0, 0, 0, 0);
-
-    if (handle < 0)
-    {
-        s_lastPackageInstallError = handle;
-        printAndLogFmt(4, "Failed to load libSceBgft.sprx: 0x%08X", handle);
-        return nullptr;
-    }
 
     const char *symbols[] = {
         "sceBgftServiceIntDownloadRegisterTask", // Flatz uses this for base games!
@@ -184,25 +269,14 @@ static BgftRegisterPackageTaskFn ResolveBgftRegisterPackageTask()
         "sceBgftServiceDownloadRegisterTask"
     };
 
-    for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++)
-    {
-        void *symbolAddress = nullptr;
-        int ret = sceKernelDlsym(handle, symbols[i], &symbolAddress);
-        if (ret == 0 && symbolAddress != nullptr)
-        {
-            registerTask = reinterpret_cast<BgftRegisterPackageTaskFn>(symbolAddress);
-            printAndLogFmt(0, "Resolved BGFT register function: %s", symbols[i]);
-            return registerTask;
-        }
-    }
-
-    s_lastPackageInstallError = -5;
-    printAndLogFmt(4, "Failed to resolve BGFT register function.");
-    return nullptr;
+    registerTask = ResolveBgftSymbol<BgftRegisterPackageTaskFn>(symbols, sizeof(symbols) / sizeof(symbols[0]));
+    return registerTask;
 }
 
 static uint32_t InstallByPackageUri(const char *uri, const char *name, const char *iconURI)
 {
+    s_lastPackageInstallError = 0;
+
     if (uri == nullptr || uri[0] == '\0')
         return PKG_ERROR("InstallByPackageUri", -1);
 
@@ -229,6 +303,7 @@ static uint32_t InstallByPackageUri(const char *uri, const char *name, const cha
     if (ret != 0)
         return PKG_ERROR("sceAppInstUtilInstallByPackage failed", ret);
 
+    s_lastPackageInstallError = 0;
     return 0;
 }
 
@@ -248,10 +323,144 @@ uint32_t installWebPKG(const char *url, const char *name, const char *title_id, 
     return InstallByPackageUri(url, name, iconURI);
 }
 
+static bool SendAll(int fd, const char *data, size_t size)
+{
+    size_t sent = 0;
+    while (sent < size)
+    {
+        ssize_t ret = send(fd, data + sent, size - sent, MSG_NOSIGNAL);
+        if (ret <= 0)
+            return false;
+
+        sent += static_cast<size_t>(ret);
+    }
+
+    return true;
+}
+
+static void HandleManifestClient(int client)
+{
+    char request[1024] = {};
+    ssize_t requestSize = recv(client, request, sizeof(request) - 1, 0);
+    bool headOnly = requestSize > 0 && strncmp(request, "HEAD ", 5) == 0;
+
+    std::string body;
+    {
+        std::lock_guard<std::mutex> lock(s_manifest_mutex);
+        body = s_manifest_json;
+    }
+
+    if (body.empty())
+        body = "{}";
+
+    char header[512] = {};
+    snprintf(header,
+             sizeof(header),
+             "HTTP/1.1 200 OK\r\n"
+             "Content-Type: application/json\r\n"
+             "Content-Length: %zu\r\n"
+             "Cache-Control: no-store\r\n"
+             "Connection: close\r\n"
+             "\r\n",
+             body.size());
+
+    SendAll(client, header, strlen(header));
+    if (!headOnly)
+        SendAll(client, body.c_str(), body.size());
+
+    close(client);
+}
+
+static void ManifestServerLoop(int serverSocket)
+{
+    while (s_manifest_server_running.load())
+    {
+        struct sockaddr_in clientAddress = {};
+        socklen_t clientAddressLength = sizeof(clientAddress);
+        int client = accept(serverSocket, reinterpret_cast<struct sockaddr *>(&clientAddress), &clientAddressLength);
+        if (client < 0)
+            continue;
+
+        HandleManifestClient(client);
+    }
+
+    close(serverSocket);
+}
+
+static bool StartManifestJsonServer(const char *manifestJson, const char *localIp, char *outUrl, size_t outUrlSize)
+{
+    if (manifestJson == nullptr || manifestJson[0] == '\0')
+        return false;
+
+    {
+        std::lock_guard<std::mutex> lock(s_manifest_mutex);
+        s_manifest_json = manifestJson;
+    }
+
+    const char *hostIp = (localIp != nullptr && localIp[0] != '\0') ? localIp : "127.0.0.1";
+    snprintf(outUrl, outUrlSize, "http://%s:%d/manifest.json", hostIp, DUSKARYON_MANIFEST_SERVER_PORT);
+
+    if (s_manifest_server_running.load())
+        return true;
+
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0)
+    {
+        s_lastPackageInstallError = serverSocket;
+        printAndLogFmt(4, "Manifest server socket failed: 0x%08X", serverSocket);
+        return false;
+    }
+
+    int enabled = 1;
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enabled, sizeof(enabled));
+
+    struct sockaddr_in address = {};
+    address.sin_len = sizeof(address);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_port = htons(DUSKARYON_MANIFEST_SERVER_PORT);
+
+    int ret = bind(serverSocket, reinterpret_cast<struct sockaddr *>(&address), sizeof(address));
+    if (ret < 0)
+    {
+        s_lastPackageInstallError = ret;
+        printAndLogFmt(4, "Manifest server bind failed: 0x%08X", ret);
+        close(serverSocket);
+        return false;
+    }
+
+    ret = listen(serverSocket, 4);
+    if (ret < 0)
+    {
+        s_lastPackageInstallError = ret;
+        printAndLogFmt(4, "Manifest server listen failed: 0x%08X", ret);
+        close(serverSocket);
+        return false;
+    }
+
+    s_manifest_server_socket = serverSocket;
+    s_manifest_server_running.store(true);
+
+    try
+    {
+        std::thread(ManifestServerLoop, serverSocket).detach();
+    }
+    catch (...)
+    {
+        s_manifest_server_running.store(false);
+        close(serverSocket);
+        s_manifest_server_socket = -1;
+        s_lastPackageInstallError = -6;
+        printAndLogFmt(4, "Manifest server thread failed.");
+        return false;
+    }
+
+    printAndLogFmt(1, "Manifest JSON server listening: %s", outUrl);
+    return true;
+}
+
 int installManifestPKG(const char *manifestUrl, const char *name, const char *contentId, const char *iconURI, unsigned long packageSize, const char *packageType)
 {
-    (void)iconURI;
-
     if (manifestUrl == nullptr || manifestUrl[0] == '\0')
         return PKG_ERROR("installManifestPKG missing manifest URL", -1);
 
@@ -276,7 +485,7 @@ int installManifestPKG(const char *manifestUrl, const char *name, const char *co
     params.content_url = manifestUrl;
     params.content_ex_url = "";
     params.content_name = name != nullptr && name[0] != '\0' ? name : "Package";
-    params.icon_path = "";
+    params.icon_path = iconURI != nullptr && iconURI[0] != '\0' ? iconURI : "";
     params.sku_id = "";
     params.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
     params.playgo_scenario_id = "0";
@@ -298,6 +507,15 @@ int installManifestPKG(const char *manifestUrl, const char *name, const char *co
     s_lastPackageInstallError = 0;
     printAndLogFmt(1, "Manifest BGFT task registered: %d", task_id);
     return task_id;
+}
+
+int installManifestPKGFromJson(const char *manifestJson, const char *localIp, const char *name, const char *contentId, const char *iconURI, unsigned long packageSize, const char *packageType)
+{
+    char manifestUrl[256] = {};
+    if (!StartManifestJsonServer(manifestJson, localIp, manifestUrl, sizeof(manifestUrl)))
+        return PKG_ERROR("StartManifestJsonServer failed", s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -1);
+
+    return installManifestPKG(manifestUrl, name, contentId, iconURI, packageSize, packageType);
 }
 
 int getLastPackageInstallError(void)

@@ -8,7 +8,7 @@ TARGET      := UnityOrbisBridge.prx
 
 # Libraries linked into the ELF.
 LIBS        := -lc++ -lz -lkernel $(TOOLCHAIN)/lib/libjbc.a                                      \
-               -lcurl $(TOOLCHAIN)/lib/libpolarssl.a                                             \
+               -lcurl -lmbedtls -lmbedx509 -lmbedcrypto $(TOOLCHAIN)/lib/libpolarssl.a           \
                -lSceAppInstUtil -lSceLibcInternal -lSceNet                                       \
                -lSceUserService -lSceLncUtil -lSceSysmodule                                      \
                -lSceSystemService -lSceCommonDialog -lSceMsgDialog                               \
