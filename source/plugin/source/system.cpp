@@ -294,28 +294,20 @@ void MountRootDirectories()
         mount_large_fs(devices[i], mount_points[i], "exfatfs", "511", 0x0000000000010000ULL);
 }
 
-int InstallLocalPackageWithResult(const char *file, const char *name, const char *iconURI, bool deleteAfter)
+void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter)
 {
-    int result = -1;
+    bool status = false;
 
     PrintToConsole("Starting package installation...", 0);
 
     InitializeNativeDialogs();
 
     if (!IsPlayStation5())
-        result = static_cast<int>(installPKG(file, name, iconURI, deleteAfter));
+        status = installPKG(file, name, iconURI, deleteAfter) == 0;
     else
-        result = SendInstallRequestForPS5(file) ? 0 : -2;
+        status = SendInstallRequestForPS5(file);
 
-    printAndLogFmt(result == 0 ? 1 : 3,
-                   result == 0 ? "Package installation succeeded." : "Package installation has failed.");
-
-    return result;
-}
-
-void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter)
-{
-    (void)InstallLocalPackageWithResult(file, name, iconURI, deleteAfter);
+    printAndLogFmt(status ? 1 : 3, status ? "Package installation succeeded." : "Package installation has failed.");
 }
 
 int InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURI)

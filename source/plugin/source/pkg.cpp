@@ -331,9 +331,12 @@ static uint32_t InstallLocalPackageFile(const char *fullpath, bool deleteAfter)
 
 uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter)
 {
-    (void)name;
-    (void)iconURI;
-    return InstallLocalPackageFile(fullpath, deleteAfter);
+    uint32_t result = InstallByPackageUri(fullpath, name, iconURI);
+    if (result == 0 && deleteAfter && fullpath != nullptr && fullpath[0] != '\0')
+    {
+        printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
+    }
+    return result;
 }
 
 uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI)

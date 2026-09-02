@@ -36,7 +36,6 @@ extern "C"
     void MountRootDirectories();
     void UnmountFromSandbox(const char *mountName);
     void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter);
-    int InstallLocalPackageWithResult(const char *file, const char *name, const char *iconURI, bool deleteAfter);
     int InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURL);
     int InstallManifestPackage(const char *url, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURL);
     int InstallManifestPackageFromJson(const char *manifestJson, const char *localIp, const char *name, const char *contentId, unsigned long packageSize, const char *packageType, const char *iconURL);
