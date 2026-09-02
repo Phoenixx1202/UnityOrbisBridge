@@ -68,11 +68,12 @@ const char *GetFWVersion()
 {
     static char versionString[32];
     OrbisKernelSwVersion versionInfo = {};
+    versionInfo.Size = sizeof(OrbisKernelSwVersion);
 
     if (sceKernelGetSystemSwVersion(&versionInfo) < 0)
         return "00.00";
 
-    strncpy(versionString, versionInfo.s_version, sizeof(versionString) - 1);
+    strncpy(versionString, versionInfo.VersionString, sizeof(versionString) - 1);
     versionString[sizeof(versionString) - 1] = '\0';
 
     while (versionString[0] == ' ')
