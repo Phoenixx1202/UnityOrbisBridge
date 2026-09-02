@@ -62,6 +62,7 @@ namespace UnityOrbisBridge
         {
             InstallLocalPackage(filePath, name, string.Empty, deleteAfter);
         }
+        [DllImport("UnityOrbisBridge")] public static extern int InstallLocalPackageWithResult(string filePath, string name, string iconURI, bool deleteAfter);
         [DllImport("UnityOrbisBridge")] public static extern int InstallWebPackage(string url, string name, string titleId, string iconURI);
         [DllImport("UnityOrbisBridge")] public static extern int InstallManifestPackage(string url, string name, string contentId, ulong packageSize, string packageType, string iconURI);
         [DllImport("UnityOrbisBridge")] public static extern int InstallManifestPackageFromJson(string manifestJson, string localIp, string name, string contentId, ulong packageSize, string packageType, string iconURI);

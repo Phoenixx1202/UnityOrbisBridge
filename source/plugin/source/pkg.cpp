@@ -307,14 +307,33 @@ static uint32_t InstallByPackageUri(const char *uri, const char *name, const cha
     return 0;
 }
 
+static uint32_t InstallLocalPackageFile(const char *fullpath, bool deleteAfter)
+{
+    s_lastPackageInstallError = 0;
+
+    if (fullpath == nullptr || fullpath[0] == '\0')
+        return PKG_ERROR("InstallLocalPackageFile", -1);
+
+    if (!app_inst_util_init())
+        return PKG_ERROR("AppInstUtil initialization failed", -1);
+
+    printAndLogFmt(0, "Requesting local package install: %s", fullpath);
+    int ret = sceAppInstUtilAppInstallPkg(fullpath, nullptr);
+    if (ret != 0)
+        return PKG_ERROR("sceAppInstUtilAppInstallPkg failed", ret);
+
+    if (deleteAfter)
+        printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
+
+    s_lastPackageInstallError = 0;
+    return 0;
+}
+
 uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter)
 {
-    uint32_t result = InstallByPackageUri(fullpath, name, iconURI);
-    if (result == 0 && deleteAfter && fullpath != nullptr && fullpath[0] != '\0')
-    {
-        printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
-    }
-    return result;
+    (void)name;
+    (void)iconURI;
+    return InstallLocalPackageFile(fullpath, deleteAfter);
 }
 
 uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI)

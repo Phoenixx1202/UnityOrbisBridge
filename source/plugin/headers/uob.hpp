@@ -44,6 +44,7 @@ extern "C"
     void AppendFile(const char *content, const char *file);
     void MountRootDirectories();
     void InstallLocalPackage(const char *file, const char *name, const char *iconURI, bool deleteAfter);
+    int InstallLocalPackageWithResult(const char *file, const char *name, const char *iconURI, bool deleteAfter);
     int InstallWebPackage(const char *url, const char *name, const char *titleId, const char *iconURL);
     void ExtractZipFile(const char *filePath, const char *outPath);
     bool CheckIfAppExists(const char *titleId);
