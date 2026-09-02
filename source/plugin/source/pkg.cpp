@@ -1,6 +1,7 @@
 #include "../headers/includes.hpp"
 #include <mutex>
 #include <string>
+#include <cstring>
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -331,7 +332,16 @@ static uint32_t InstallLocalPackageFile(const char *fullpath, bool deleteAfter)
 
 uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter)
 {
-    uint32_t result = InstallByPackageUri(fullpath, name, iconURI);
+    if (fullpath == nullptr || fullpath[0] == '\0')
+        return PKG_ERROR("installPKG", -1);
+
+    bool looksLikeFilePath = fullpath[0] == '/' ||
+                            strstr(fullpath, "://") == nullptr; // fallback: sem esquema, tratar como arquivo local
+
+    uint32_t result = looksLikeFilePath
+        ? InstallLocalPackageFile(fullpath, deleteAfter)
+        : InstallByPackageUri(fullpath, name, iconURI);
+
     if (result == 0 && deleteAfter && fullpath != nullptr && fullpath[0] != '\0')
     {
         printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
