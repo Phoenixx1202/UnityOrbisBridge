@@ -42,6 +42,7 @@ namespace UnityOrbisBridge
         [DllImport("UnityOrbisBridge")] public static extern IntPtr GetConsoleType();
         [DllImport("UnityOrbisBridge")] public static extern int GetSystemLanguageID();
         [DllImport("UnityOrbisBridge")] public static extern IntPtr GetSystemLanguage();
+        [DllImport("UnityOrbisBridge")] public static extern int GetOpenPsId(IntPtr output, UIntPtr outputSize);
        
         #endregion
 

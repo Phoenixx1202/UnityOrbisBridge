@@ -26,6 +26,7 @@ extern "C"
     const char *GetConsoleType();
     int32_t GetSystemLanguageID();
     const char *GetSystemLanguage();
+    int GetOpenPsId(unsigned char *output, size_t outputSize);
     uint32_t GetCPUTemperature();
     uint32_t GetSOCTemperature();
 #pragma endregion

@@ -114,6 +114,20 @@ const char *GetSystemLanguage()
     return (langID >= ORBIS_SYSTEM_PARAM_LANG_JAPANESE && langID <= ORBIS_SYSTEM_PARAM_LANG_INDONESIAN) ? languages[langID] : "NULL";
 }
 
+int GetOpenPsId(unsigned char *output, size_t outputSize)
+{
+    static const size_t openPsIdSize = 16;
+    if (!output || outputSize < openPsIdSize)
+        return -1;
+
+    memset(output, 0, openPsIdSize);
+    int result = sceKernelGetOpenPsIdForSystem(output);
+    if (result < 0)
+        memset(output, 0, openPsIdSize);
+
+    return result;
+}
+
 uint32_t GetCPUTemperature()
 {
     uint32_t celsius;
