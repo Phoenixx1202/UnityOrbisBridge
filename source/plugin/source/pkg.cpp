@@ -308,7 +308,7 @@ static uint32_t InstallByPackageUri(const char *uri, const char *name, const cha
     return 0;
 }
 
-static uint32_t InstallLocalPackageFile(const char *fullpath, bool deleteAfter)
+static uint32_t InstallLocalPackageFile(const char *fullpath, const char *name, const char *iconURI, bool deleteAfter)
 {
     s_lastPackageInstallError = 0;
 
@@ -318,15 +318,91 @@ static uint32_t InstallLocalPackageFile(const char *fullpath, bool deleteAfter)
     if (!app_inst_util_init())
         return PKG_ERROR("AppInstUtil initialization failed", -1);
 
-    printAndLogFmt(0, "Requesting local package install: %s", fullpath);
-    int ret = sceAppInstUtilAppInstallPkg(fullpath, nullptr);
+    if (!bgft_init())
+        return PKG_ERROR("BGFT initialization failed", s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -1);
+
+    struct stat pkgStat = {};
+    if (stat(fullpath, &pkgStat) != 0 || pkgStat.st_size <= 0)
+        return PKG_ERROR("stat local package failed", errno != 0 ? errno : -1);
+
+    char titleId[16] = {};
+    int isApp = 0;
+    int ret = sceAppInstUtilGetTitleIdFromPkg(fullpath, titleId, &isApp);
     if (ret != 0)
-        return PKG_ERROR("sceAppInstUtilAppInstallPkg failed", ret);
+        return PKG_ERROR("sceAppInstUtilGetTitleIdFromPkg failed", ret);
+
+    (void)isApp;
+
+    uint64_t registeredSize = 0;
+    ret = sceAppInstUtilAppGetSize(titleId, &registeredSize);
+    if (ret != 0 || registeredSize == 0)
+    {
+        registeredSize = static_cast<uint64_t>(pkgStat.st_size);
+        printAndLogFmt(2, "sceAppInstUtilAppGetSize unavailable for %s; using file size %llu",
+                       titleId, static_cast<unsigned long long>(registeredSize));
+    }
+
+    int userId = -1;
+    ret = sceUserServiceGetForegroundUser(&userId);
+    if (ret != 0)
+        return PKG_ERROR("sceUserServiceGetForegroundUser failed", ret);
+
+    bgft_download_param_ex params = {};
+    params.param.user_id = userId;
+    params.param.entitlement_type = 5;
+    params.param.id = "";
+    params.param.content_url = fullpath;
+    params.param.content_ex_url = "";
+    params.param.content_name = name != nullptr && name[0] != '\0' ? name : "Package";
+    params.param.icon_path = iconURI != nullptr ? iconURI : "";
+    params.param.sku_id = "";
+    params.param.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
+    params.param.playgo_scenario_id = "0";
+    params.param.release_date = "";
+    params.param.package_type = "";
+    params.param.package_sub_type = "";
+    params.param.package_size = static_cast<unsigned long>(registeredSize);
+    params.slot = 0;
+
+    int taskId = -1;
+    bool retriedConflict = false;
+    printAndLogFmt(0, "Registering local BGFT package: %s (file %llu, registered %lu, title %s)",
+                   fullpath, static_cast<unsigned long long>(pkgStat.st_size),
+                   params.param.package_size, titleId);
+
+retry:
+    ret = sceBgftServiceIntDownloadRegisterTaskByStorageEx(&params, &taskId);
+    if (ret == static_cast<int>(0x80990088) || ret == static_cast<int>(0x80990015))
+    {
+        if (retriedConflict)
+            return PKG_ERROR("Package conflict remained after uninstall", ret);
+
+        retriedConflict = true;
+        printAndLogFmt(2, "Conflicting installation detected. Uninstalling title %s before retry.", titleId);
+        ret = sceAppInstUtilAppUnInstall(titleId);
+        if (ret != 0)
+            return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
+        goto retry;
+    }
+
+    if (ret == static_cast<int>(0x80990086))
+    {
+        TextNotify(222, "Already queued in notifications\nplease cancel it and retry.");
+        return PKG_ERROR("Package already queued", ret);
+    }
+
+    if (ret != 0)
+        return PKG_ERROR("sceBgftServiceIntDownloadRegisterTaskByStorageEx failed", ret);
+
+    ret = sceBgftServiceDownloadStartTask(taskId);
+    if (ret != 0)
+        return PKG_ERROR("sceBgftServiceDownloadStartTask failed", ret);
 
     if (deleteAfter)
         printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
 
     s_lastPackageInstallError = 0;
+    printAndLogFmt(1, "Local BGFT package task started: %d", taskId);
     return 0;
 }
 
@@ -339,7 +415,7 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
                             strstr(fullpath, "://") == nullptr; // fallback: sem esquema, tratar como arquivo local
 
     uint32_t result = looksLikeFilePath
-        ? InstallLocalPackageFile(fullpath, deleteAfter)
+        ? InstallLocalPackageFile(fullpath, name, iconURI, deleteAfter)
         : InstallByPackageUri(fullpath, name, iconURI);
 
     if (result == 0 && deleteAfter && fullpath != nullptr && fullpath[0] != '\0')
