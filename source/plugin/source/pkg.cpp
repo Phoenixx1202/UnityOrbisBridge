@@ -726,11 +726,15 @@ int installManifestPKG(const char *manifestUrl, const char *name, const char *co
     params.package_size = packageSize;
 
     int task_id = -1;
-    BgftRegisterPackageTaskFn registerTask = ResolveBgftRegisterPackageTask();
+    const bool isPatch = strcmp(params.package_type, "PS4DP") == 0;
+    BgftRegisterPackageTaskFn registerTask = isPatch
+        ? ResolveBgftDirectPackageRegister()
+        : ResolveBgftRegisterPackageTask();
     if (registerTask == nullptr)
-        return PKG_ERROR("ResolveBgftRegisterPackageTask failed", s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -5);
+        return PKG_ERROR(isPatch ? "ResolveBgftPatchPackageRegister failed" : "ResolveBgftRegisterPackageTask failed",
+                         s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -5);
 
-    printAndLogFmt(0, "Registering manifest BGFT task: %s", manifestUrl);
+    printAndLogFmt(0, "Registering manifest BGFT task (patch=%d)", isPatch ? 1 : 0);
     ret = registerTask(&params, &task_id);
     if (ret != 0)
         return PKG_ERROR("BGFT register function failed", ret);
