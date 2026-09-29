@@ -290,6 +290,47 @@ static BgftRegisterPackageTaskFn ResolveBgftDirectPackageRegister()
     return registerTask;
 }
 
+static void DeleteLocalPackageAfterBgftCompletes(int taskId, std::string packagePath)
+{
+    const int maxPolls = 2400;
+    const useconds_t pollDelayUs = 500000;
+
+    sceKernelUsleep(pollDelayUs);
+
+    for (int poll = 0; poll < maxPolls; ++poll)
+    {
+        SceBgftTaskProgress progress = {};
+        int ret = sceBgftServiceDownloadGetProgress(taskId, &progress);
+        if (ret != 0)
+        {
+            printAndLogFmt(4, "Temporary local package cleanup skipped: BGFT progress error 0x%08X", ret);
+            return;
+        }
+
+        if (progress.error_result != 0)
+        {
+            printAndLogFmt(4, "Temporary local package preserved: BGFT install error 0x%08X", progress.error_result);
+            return;
+        }
+
+        unsigned long length = progress.lengthTotal > 0 ? progress.lengthTotal : progress.length;
+        unsigned long transferred = progress.transferredTotal > 0 ? progress.transferredTotal : progress.transferred;
+        if (length > 0 && transferred >= length)
+        {
+            sceKernelUsleep(1500000);
+            if (unlink(packagePath.c_str()) == 0)
+                printAndLogFmt(1, "Temporary local package removed after installation.");
+            else
+                printAndLogFmt(4, "Temporary local package cleanup failed: 0x%08X", errno);
+            return;
+        }
+
+        sceKernelUsleep(pollDelayUs);
+    }
+
+    printAndLogFmt(2, "Temporary local package cleanup timed out; file preserved.");
+}
+
 static uint32_t InstallByPackageUri(const char *uri, const char *name, const char *iconURI)
 {
     s_lastPackageInstallError = 0;
@@ -415,7 +456,16 @@ retry:
         return PKG_ERROR("sceBgftServiceDownloadStartTask failed", ret);
 
     if (deleteAfter)
-        printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
+    {
+        try
+        {
+            std::thread(DeleteLocalPackageAfterBgftCompletes, taskId, std::string(fullpath)).detach();
+        }
+        catch (...)
+        {
+            printAndLogFmt(4, "Temporary local package cleanup thread failed; file preserved.");
+        }
+    }
 
     s_lastPackageInstallError = 0;
     printAndLogFmt(1, "Local BGFT package task started: %d", taskId);
@@ -434,10 +484,6 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
         ? InstallLocalPackageFile(fullpath, name, iconURI, deleteAfter)
         : InstallByPackageUri(fullpath, name, iconURI);
 
-    if (result == 0 && deleteAfter && fullpath != nullptr && fullpath[0] != '\0')
-    {
-        printAndLogFmt(1, "Delete-after-install requested; leaving package cleanup to the caller.");
-    }
     return result;
 }
 
