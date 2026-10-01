@@ -11,6 +11,8 @@ char *dataBuffer = nullptr;
 size_t bufferSize = 0;
 bool hasDownloadCompleted = false;
 bool downloadErrorOccured = false;
+int downloadErrorCode = 0;
+long downloadHttpStatus = 0;
 std::atomic<bool> cancelDownload(false);
 static std::atomic<bool> downloadInProgress(false);
 CURL *curl = nullptr;
@@ -25,6 +27,10 @@ char *GetDownloadInfo(const char *info)
         return strdup(std::to_string(totalFileSize).c_str());
     else if (strcmp(info, "progress") == 0)
         return strdup(std::to_string(downloadProgress).c_str());
+    else if (strcmp(info, "errorcode") == 0)
+        return strdup(std::to_string(downloadErrorCode).c_str());
+    else if (strcmp(info, "httpstatus") == 0)
+        return strdup(std::to_string(downloadHttpStatus).c_str());
     return nullptr;
 }
 
@@ -50,6 +56,8 @@ void ResetDownloadVars()
     totalFileSize = 0;
     currentSize = 0;
     downloadSpeed = 0.0;
+    downloadErrorCode = 0;
+    downloadHttpStatus = 0;
 
     free(dataBuffer);
     dataBuffer = nullptr;
@@ -227,23 +235,27 @@ void BeginDownload(const char *url, const char *pathWithFile)
     std::string userAgent = "UnityOrbisBridge | FW: " + std::string(GetFWVersion());
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, UpdateDownloadProgress);
-    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 8L);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 
     if (resume_offset > 0)
         curl_easy_setopt(curl, CURLOPT_RESUME_FROM, resume_offset);
 
     CURLcode result = curl_easy_perform(curl);
+    downloadErrorCode = static_cast<int>(result);
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &downloadHttpStatus);
     if (result == CURLE_OK)
     {
         printAndLogFmt(1, ("The download (" + std::string(url) +
@@ -317,6 +329,8 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
     totalFileSize = 0;
     currentSize = 0;
     downloadSpeed = 0.0;
+    downloadErrorCode = 0;
+    downloadHttpStatus = 0;
     hasDownloadCompleted = false;
     downloadErrorOccured = false;
     threadDownload = bgDL;
