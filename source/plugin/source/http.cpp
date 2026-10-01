@@ -12,6 +12,7 @@ size_t bufferSize = 0;
 bool hasDownloadCompleted = false;
 bool downloadErrorOccured = false;
 std::atomic<bool> cancelDownload(false);
+static std::atomic<bool> downloadInProgress(false);
 CURL *curl = nullptr;
 
 char *GetDownloadInfo(const char *info)
@@ -39,6 +40,9 @@ bool HasDownloadErrorOccured()
 
 void ResetDownloadVars()
 {
+    if (downloadInProgress.load())
+        return;
+
     cancelDownload.store(false);
     fileName = nullptr;
     filePath = nullptr;
@@ -133,12 +137,12 @@ size_t HeaderCallback(void *ptr, size_t size, size_t nmemb, void *data)
 
 void BeginDownload(const char *url, const char *pathWithFile)
 {
-    ResetDownloadVars();
-
     if (!pathWithFile)
     {
         printAndLogFmt(3, "Download path is null.");
         downloadErrorOccured = true;
+        hasDownloadCompleted = true;
+        downloadInProgress.store(false);
         return;
     }
 
@@ -161,6 +165,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
             printAndLogFmt(3, "Failed to open resume file.");
 
             downloadErrorOccured = true;
+            hasDownloadCompleted = true;
+            downloadInProgress.store(false);
 
             return;
         }
@@ -173,6 +179,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
             printAndLogFmt(3, "Failed to open file for writing.");
 
             downloadErrorOccured = true;
+            hasDownloadCompleted = true;
+            downloadInProgress.store(false);
 
             return;
         }
@@ -186,6 +194,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
         fclose(file);
 
         downloadErrorOccured = true;
+        hasDownloadCompleted = true;
+        downloadInProgress.store(false);
 
         return;
     }
@@ -207,6 +217,8 @@ void BeginDownload(const char *url, const char *pathWithFile)
             sceMsgDialogTerminate();
 
         downloadErrorOccured = true;
+        hasDownloadCompleted = true;
+        downloadInProgress.store(false);
         return;
     }
 
@@ -248,6 +260,7 @@ void BeginDownload(const char *url, const char *pathWithFile)
 
         fclose(file);
         fileClosed = true;
+        downloadErrorOccured = true;
     }
     else
     {
@@ -275,17 +288,36 @@ void BeginDownload(const char *url, const char *pathWithFile)
         sceMsgDialogTerminate();
 
     hasDownloadCompleted = true;
+    downloadInProgress.store(false);
 }
 
 void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const char *name)
 {
-    threadDownload = bgDL;
-
     if (!url || !pathWithFile)
     {
         printAndLogFmt(3, "Invalid URL or file path.");
+        downloadErrorOccured = true;
+        hasDownloadCompleted = true;
         return;
     }
+
+    ResetDownloadVars();
+
+    bool expected = false;
+    if (!downloadInProgress.compare_exchange_strong(expected, true))
+    {
+        printAndLogFmt(2, "Download request ignored because another download is active.");
+        return;
+    }
+
+    cancelDownload.store(false);
+    downloadProgress = 0;
+    totalFileSize = 0;
+    currentSize = 0;
+    downloadSpeed = 0.0;
+    hasDownloadCompleted = false;
+    downloadErrorOccured = false;
+    threadDownload = bgDL;
 
     fileName = name;
 
@@ -295,9 +327,20 @@ void DownloadWebFile(const char *url, const char *pathWithFile, bool bgDL, const
     {
         std::string urlCopy(url);
         std::string filePathCopy(pathWithFile);
-        std::thread downloadThread([urlCopy, filePathCopy]()
-                                   { BeginDownload(urlCopy.c_str(), filePathCopy.c_str()); });
-        downloadThread.detach();
+        try
+        {
+            std::thread downloadThread([urlCopy, filePathCopy]()
+                                       { BeginDownload(urlCopy.c_str(), filePathCopy.c_str()); });
+            downloadThread.detach();
+        }
+        catch (...)
+        {
+            printAndLogFmt(3, "Failed to start background download thread.");
+            downloadErrorOccured = true;
+            hasDownloadCompleted = true;
+            downloadInProgress.store(false);
+            return;
+        }
     }
 
     printAndLogFmt(1, bgDL ? "Background download has begun." : "Foreground download has begun.");
