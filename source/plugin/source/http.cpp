@@ -88,7 +88,9 @@ static int UpdateDownloadProgress(void *, int64_t totalSize, int64_t downloadedS
             downloadSpeed = currentDownloadSpeed;
             totalFileSize = totalSize;
             currentSize = downloadedSize;
-            downloadProgress = (totalSize < 0) ? 0 : static_cast<int>((static_cast<float>(downloadedSize) / totalSize) * 100.f);
+            downloadProgress = (totalSize <= 0)
+                                   ? 0
+                                   : static_cast<int>((static_cast<float>(downloadedSize) / totalSize) * 100.f);
         }
 
         if (!threadDownload)
