@@ -489,69 +489,8 @@ uint32_t installPKG(const char *fullpath, const char *name, const char *iconURI,
 
 uint32_t installWebPKG(const char *url, const char *name, const char *title_id, const char *iconURI)
 {
-    s_lastPackageInstallError = 0;
-
-    if (url == nullptr || url[0] == '\0')
-        return PKG_ERROR("installWebPKG missing URL", -1);
-
-    if (!app_inst_util_init())
-        return PKG_ERROR("AppInstUtil initialization failed", -2);
-
-    if (!bgft_init())
-        return PKG_ERROR("BGFT initialization failed", s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -3);
-
-    int userId = -1;
-    int ret = sceUserServiceGetForegroundUser(&userId);
-    if (ret != 0)
-        return PKG_ERROR("sceUserServiceGetForegroundUser failed", ret);
-
-    bgft_download_param params = {};
-    params.user_id = userId;
-    params.entitlement_type = 5;
-    params.id = "";
-    params.content_url = url;
-    params.content_ex_url = "";
-    params.content_name = name != nullptr && name[0] != '\0' ? name : "Package";
-    params.icon_path = iconURI != nullptr ? iconURI : "";
-    params.sku_id = "";
-    params.option = BGFT_TASK_OPTION_DISABLE_CDN_QUERY_PARAM;
-    params.playgo_scenario_id = "0";
-    params.release_date = "";
-    params.package_type = "";
-    params.package_sub_type = "";
-    params.package_size = 0;
-
-    BgftRegisterPackageTaskFn registerTask = ResolveBgftDirectPackageRegister();
-    if (registerTask == nullptr)
-        return PKG_ERROR("ResolveBgftDirectPackageRegister failed", s_lastPackageInstallError != 0 ? s_lastPackageInstallError : -4);
-
-    int taskId = -1;
-    bool retriedConflict = false;
-
-retry:
-    ret = registerTask(&params, &taskId);
-    if (ret == static_cast<int>(0x80990088) || ret == static_cast<int>(0x80990015))
-    {
-        if (retriedConflict || title_id == nullptr || title_id[0] == '\0')
-            return PKG_ERROR("Direct package conflict", ret);
-
-        retriedConflict = true;
-        ret = sceAppInstUtilAppUnInstall(title_id);
-        if (ret != 0)
-            return PKG_ERROR("sceAppInstUtilAppUnInstall failed", ret);
-        goto retry;
-    }
-
-    if (ret != 0)
-        return PKG_ERROR("Direct BGFT register failed", ret);
-
-    ret = sceBgftServiceDownloadStartTask(taskId);
-    if (ret != 0)
-        return PKG_ERROR("sceBgftServiceDownloadStartTask failed", ret);
-
-    s_lastPackageInstallError = 0;
-    printAndLogFmt(1, "Direct BGFT package task started: %d", taskId);
-    return 0;
+    (void)title_id;
+    return InstallByPackageUri(url, name, iconURI);
 }
 
 static bool SendAll(int fd, const char *data, size_t size)
