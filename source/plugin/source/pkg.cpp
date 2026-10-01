@@ -60,11 +60,19 @@ static SceAppInstUtilInstallByPackageFn ResolveAppInstUtilInstallByPackage()
     
     if (handle >= 0)
     {
-        void *symbolAddress = nullptr;
-        if (sceKernelDlsym(handle, "sceAppInstUtilInstallByPackage", &symbolAddress) == 0 && symbolAddress != nullptr)
+        const char *symbols[] = {
+            "sceAppInstUtilInstallByPackage",
+            "tDtjgaXYmuo"
+        };
+
+        for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++)
         {
-            installFn = reinterpret_cast<SceAppInstUtilInstallByPackageFn>(symbolAddress);
-            return installFn;
+            void *symbolAddress = nullptr;
+            if (sceKernelDlsym(handle, symbols[i], &symbolAddress) == 0 && symbolAddress != nullptr)
+            {
+                installFn = reinterpret_cast<SceAppInstUtilInstallByPackageFn>(symbolAddress);
+                return installFn;
+            }
         }
     }
     return nullptr;
