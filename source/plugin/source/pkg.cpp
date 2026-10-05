@@ -1,5 +1,6 @@
 #include "../headers/includes.hpp"
 #include <mutex>
+#include <map>
 #include <string>
 #include <cstring>
 
@@ -13,9 +14,10 @@ static void *s_bgft_heap = nullptr;
 static int s_lastPackageInstallError = 0;
 static const int DUSKARYON_MANIFEST_SERVER_PORT = 9998;
 static std::atomic<bool> s_manifest_server_running(false);
+static std::atomic<unsigned int> s_manifest_sequence(0);
 static int s_manifest_server_socket = -1;
 static std::mutex s_manifest_mutex;
-static std::string s_manifest_json;
+static std::map<std::string, std::string> s_manifest_json_by_path;
 
 typedef char playgo_scenario_id_t[3];
 typedef char content_id_t[0x30];
@@ -522,24 +524,36 @@ static void HandleManifestClient(int client)
     ssize_t requestSize = recv(client, request, sizeof(request) - 1, 0);
     bool headOnly = requestSize > 0 && strncmp(request, "HEAD ", 5) == 0;
 
+    char method[8] = {};
+    char requestedPath[256] = {};
+    bool validRequest = requestSize > 0 &&
+                        sscanf(request, "%7s %255s", method, requestedPath) == 2;
+
     std::string body;
+    if (validRequest)
     {
         std::lock_guard<std::mutex> lock(s_manifest_mutex);
-        body = s_manifest_json;
+        std::map<std::string, std::string>::const_iterator manifest =
+            s_manifest_json_by_path.find(requestedPath);
+        if (manifest != s_manifest_json_by_path.end())
+            body = manifest->second;
     }
 
-    if (body.empty())
-        body = "{}";
+    const bool found = !body.empty();
+    if (!found)
+        body = "Manifest not found";
 
     char header[512] = {};
     snprintf(header,
              sizeof(header),
-             "HTTP/1.1 200 OK\r\n"
-             "Content-Type: application/json\r\n"
+             "HTTP/1.1 %s\r\n"
+             "Content-Type: %s\r\n"
              "Content-Length: %zu\r\n"
              "Cache-Control: no-store\r\n"
              "Connection: close\r\n"
              "\r\n",
+             found ? "200 OK" : "404 Not Found",
+             found ? "application/json" : "text/plain",
              body.size());
 
     SendAll(client, header, strlen(header));
@@ -570,13 +584,17 @@ static bool StartManifestJsonServer(const char *manifestJson, const char *localI
     if (manifestJson == nullptr || manifestJson[0] == '\0')
         return false;
 
+    const unsigned int manifestId = s_manifest_sequence.fetch_add(1) + 1;
+    char manifestPath[64] = {};
+    snprintf(manifestPath, sizeof(manifestPath), "/manifest/%u.json", manifestId);
+
     {
         std::lock_guard<std::mutex> lock(s_manifest_mutex);
-        s_manifest_json = manifestJson;
+        s_manifest_json_by_path[manifestPath] = manifestJson;
     }
 
     const char *hostIp = (localIp != nullptr && localIp[0] != '\0') ? localIp : "127.0.0.1";
-    snprintf(outUrl, outUrlSize, "http://%s:%d/manifest.json", hostIp, DUSKARYON_MANIFEST_SERVER_PORT);
+    snprintf(outUrl, outUrlSize, "http://%s:%d%s", hostIp, DUSKARYON_MANIFEST_SERVER_PORT, manifestPath);
 
     if (s_manifest_server_running.load())
         return true;
