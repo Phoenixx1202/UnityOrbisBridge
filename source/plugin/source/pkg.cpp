@@ -1,8 +1,8 @@
 #include "../headers/includes.hpp"
 #include <mutex>
-#include <map>
 #include <string>
 #include <cstring>
+#include <cstdlib>
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -17,7 +17,16 @@ static std::atomic<bool> s_manifest_server_running(false);
 static std::atomic<unsigned int> s_manifest_sequence(0);
 static int s_manifest_server_socket = -1;
 static std::mutex s_manifest_mutex;
-static std::map<std::string, std::string> s_manifest_json_by_path;
+
+struct ManifestJsonEntry
+{
+    unsigned int id;
+    char *json;
+    size_t size;
+    ManifestJsonEntry *next;
+};
+
+static ManifestJsonEntry *s_manifest_entries = nullptr;
 
 typedef char playgo_scenario_id_t[3];
 typedef char content_id_t[0x30];
@@ -528,15 +537,22 @@ static void HandleManifestClient(int client)
     char requestedPath[256] = {};
     bool validRequest = requestSize > 0 &&
                         sscanf(request, "%7s %255s", method, requestedPath) == 2;
+    unsigned int requestedId = 0;
+    validRequest = validRequest &&
+                   sscanf(requestedPath, "/manifest/%u.json", &requestedId) == 1;
 
     std::string body;
     if (validRequest)
     {
         std::lock_guard<std::mutex> lock(s_manifest_mutex);
-        std::map<std::string, std::string>::const_iterator manifest =
-            s_manifest_json_by_path.find(requestedPath);
-        if (manifest != s_manifest_json_by_path.end())
-            body = manifest->second;
+        for (ManifestJsonEntry *entry = s_manifest_entries; entry != nullptr; entry = entry->next)
+        {
+            if (entry->id == requestedId)
+            {
+                body.assign(entry->json, entry->size);
+                break;
+            }
+        }
     }
 
     const bool found = !body.empty();
@@ -588,9 +604,27 @@ static bool StartManifestJsonServer(const char *manifestJson, const char *localI
     char manifestPath[64] = {};
     snprintf(manifestPath, sizeof(manifestPath), "/manifest/%u.json", manifestId);
 
+    const size_t manifestSize = strlen(manifestJson);
+    ManifestJsonEntry *entry = static_cast<ManifestJsonEntry *>(malloc(sizeof(ManifestJsonEntry)));
+    char *jsonCopy = static_cast<char *>(malloc(manifestSize + 1));
+    if (entry == nullptr || jsonCopy == nullptr)
+    {
+        free(entry);
+        free(jsonCopy);
+        s_lastPackageInstallError = -7;
+        printAndLogFmt(4, "Manifest server allocation failed.");
+        return false;
+    }
+
+    memcpy(jsonCopy, manifestJson, manifestSize + 1);
+    entry->id = manifestId;
+    entry->json = jsonCopy;
+    entry->size = manifestSize;
+
     {
         std::lock_guard<std::mutex> lock(s_manifest_mutex);
-        s_manifest_json_by_path[manifestPath] = manifestJson;
+        entry->next = s_manifest_entries;
+        s_manifest_entries = entry;
     }
 
     const char *hostIp = (localIp != nullptr && localIp[0] != '\0') ? localIp : "127.0.0.1";
